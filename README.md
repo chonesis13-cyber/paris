@@ -1,1 +1,1108 @@
-# paris
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>근무표 조회 및 터치 배정 웹앱</title>
+  <!-- Tailwind CSS 로드 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans KR -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* 달력 셀 터치 및 호버 효과 */
+    .day-cell {
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      touch-action: manipulation;
+    }
+    .day-cell:active {
+      transform: scale(0.96);
+    }
+
+    /* 바텀시트 / 모달 애니메이션 */
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0.5; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .modal-backdrop {
+      animation: fadeIn 0.18s ease-out forwards;
+    }
+    .bottom-sheet {
+      animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* 스크롤바 숨김 처리 (가로 칩 스크롤용) */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="pb-16">
+
+  <!-- 상단 헤더 -->
+  <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📅</span>
+          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">스마트 근무표 관리 & 조회</h1>
+        </div>
+        <p class="text-xs text-blue-200 mt-0.5">날짜 칸을 터치해 매장·휴무·반차를 설정하고 근무일수를 자동 계산하세요</p>
+      </div>
+
+      <!-- 월 선택 및 새 근무표 컨트롤 -->
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <select id="monthSelect" onchange="changeMonth(this.value)" class="bg-white/15 text-white text-sm font-semibold rounded-xl px-3 py-2 border border-white/20 outline-none focus:ring-2 focus:ring-blue-400">
+          <!-- JS로 옵션 렌더링 -->
+        </select>
+        <button onclick="openNewMonthModal()" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-bold px-3 py-2 rounded-xl shadow transition flex items-center gap-1">
+          <span>+ 새 달(1~31일)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
+
+    <!-- 상단 네비게이션 탭 -->
+    <nav class="grid grid-cols-3 gap-2 bg-slate-200/80 p-1.5 rounded-2xl mb-4">
+      <button id="tabBtn-search" onclick="switchTab('search')" class="tab-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition bg-white text-blue-900 shadow-sm">
+        🔍 개인 조회 · 달력배정
+      </button>
+      <button id="tabBtn-all" onclick="switchTab('all')" class="tab-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900">
+        📊 전체 근무표 한눈에
+      </button>
+      <button id="tabBtn-spc" onclick="switchTab('spc')" class="tab-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900">
+        🏪 SPC 점검일정
+      </button>
+    </nav>
+
+    <!-- ==================== 탭 1: 개인 조회 및 1~31일 터치 달력 ==================== -->
+    <section id="view-search" class="space-y-4">
+
+      <!-- 사람 이름 검색 및 선택 카드 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+        <div class="flex gap-2 mb-3">
+          <div class="relative flex-1">
+            <input
+              type="text"
+              id="personSearchInput"
+              placeholder="이름 검색 (예: 이종효, 정다영, 원봉희, 김아름, 고은별...)"
+              onkeyup="if(event.key==='Enter') handleSearchInput()"
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base font-medium focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition"
+            />
+            <span class="absolute left-3.5 top-2.5 text-slate-400 text-base">🔎</span>
+          </div>
+          <button onclick="handleSearchInput()" class="bg-blue-700 hover:bg-blue-800 active:scale-95 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-sm">
+            조회
+          </button>
+        </div>
+
+        <!-- 빠른 이름 선택 칩 -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1" id="mainWorkerChips">
+            <!-- JS에서 메인 담당자 버튼 생성 -->
+          </div>
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-slate-100" id="subWorkerChips">
+            <!-- JS에서 대타/지원 인원 버튼 생성 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 통계 대시보드 영역 -->
+      <div id="personDashboard">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+
+    </section>
+
+    <!-- ==================== 탭 2: 전체 근무표 한눈에 보기 ==================== -->
+    <section id="view-all" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-800" id="allTableTitle">전체 근무표 (칸 터치 시 수정 가능)</h2>
+            <p class="text-xs text-slate-500">원하는 담당자의 날짜 칸을 터치하면 매장/휴무/반차를 바로 변경할 수 있습니다.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openAddWorkerModal()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+              + 인원 추가
+            </button>
+            <button onclick="exportFullCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+              📥 엑셀(CSV) 저장
+            </button>
+            <button onclick="confirmResetCurrentMonth()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-2 rounded-xl transition">
+              🔄 초기화
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-xs sm:text-sm text-center border-collapse min-w-[540px]">
+            <thead id="allTableHead" class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <!-- JS 렌더링 -->
+            </thead>
+            <tbody id="allTableBody" class="divide-y divide-slate-200">
+              <!-- JS 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 탭 3: 매장별 SPC 점검 날짜 ==================== -->
+    <section id="view-spc" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-800">매장별 SPC 점검 날짜 및 위생 비고</h2>
+            <p class="text-xs text-slate-500">원본 표 하단의 매장별 점검 이력 데이터입니다.</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-xs sm:text-sm text-left border-collapse">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4 w-1/3">매장명 (점장)</th>
+                <th class="py-3 px-4">SPC 점검 날짜 및 특이사항</th>
+              </tr>
+            </thead>
+            <tbody id="spcTableBody" class="divide-y divide-slate-200">
+              <!-- JS 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 날짜 칸 클릭/터치 시 열리는 근무 설정 바텀시트 모달 ==================== -->
+  <div id="cellEditorModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-[1px] modal-backdrop" onclick="if(event.target===this) closeCellEditor()">
+    <div class="bottom-sheet bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <!-- 상단 핸들 & 타이틀 -->
+      <div class="w-10 h-1.5 bg-slate-300 rounded-full mx-auto mb-3 sm:hidden"></div>
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <span id="modalWorkerBadge" class="inline-block bg-blue-100 text-blue-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-1">담당자</span>
+          <h3 id="modalDateTitle" class="text-lg font-extrabold text-slate-900">1일 근무 및 휴무 설정</h3>
+        </div>
+        <button onclick="closeCellEditor()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-lg">
+          ✕
+        </button>
+      </div>
+
+      <!-- 1. 근태(휴무 / 반차 / 휴가 / 비번) 빠른 선택 -->
+      <div class="mt-4">
+        <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">1. 휴무 · 반차 · 휴가 선택</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="applyQuickStatus('휴무')" class="py-2.5 px-2 rounded-xl bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300 font-extrabold text-sm transition">
+            🟡 휴무
+          </button>
+          <button type="button" onclick="applyQuickStatus('반차')" class="py-2.5 px-2 rounded-xl bg-orange-100 hover:bg-orange-200 active:scale-95 text-orange-900 border border-orange-300 font-extrabold text-sm transition">
+            🟠 반차 (0.5)
+          </button>
+          <button type="button" onclick="applyQuickStatus('오전반차')" class="py-2.5 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 active:scale-95 text-orange-800 border border-orange-200 font-bold text-xs sm:text-sm transition">
+            🌅 오전반차
+          </button>
+          <button type="button" onclick="applyQuickStatus('오후반차')" class="py-2.5 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 active:scale-95 text-orange-800 border border-orange-200 font-bold text-xs sm:text-sm transition">
+            🌇 오후반차
+          </button>
+          <button type="button" onclick="applyQuickStatus('휴가')" class="py-2.5 px-2 rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 border border-purple-300 font-extrabold text-sm transition">
+            🟣 휴가
+          </button>
+          <button type="button" onclick="applyQuickStatus('비번')" class="py-2.5 px-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 active:scale-95 text-indigo-900 border border-indigo-300 font-extrabold text-sm transition">
+            🔵 비번
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. 담당 구역 매장 빠른 선택 -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">2. 근무 매장 선택 (터치 시 입력)</label>
+          <!-- 회차 번호 선택 옵션 -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-400 font-semibold">회차 추가:</span>
+            <button type="button" onclick="appendNumberSuffix('1')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">1</button>
+            <button type="button" onclick="appendNumberSuffix('2')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">2</button>
+            <button type="button" onclick="appendNumberSuffix('3')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">3</button>
+            <button type="button" onclick="appendNumberSuffix('4')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">4</button>
+            <button type="button" onclick="appendNumberSuffix('5')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">5</button>
+            <button type="button" onclick="appendNumberSuffix('6')" class="w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-xs font-bold text-slate-700">6</button>
+          </div>
+        </div>
+
+        <!-- 해당 담당자 주력 매장 -->
+        <div id="primaryStoreButtons" class="flex flex-wrap gap-1.5 mb-2">
+          <!-- JS 렌더링 -->
+        </div>
+
+        <!-- 타 구역 / 전체 매장 토글 -->
+        <details class="group">
+          <summary class="text-xs font-bold text-blue-600 cursor-pointer select-none py-1 hover:underline">
+            + 다른 담당자 구역 매장 전체 보기
+          </summary>
+          <div id="otherStoreButtons" class="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-100">
+            <!-- JS 렌더링 -->
+          </div>
+        </details>
+      </div>
+
+      <!-- 3. 직접 입력 및 상세 조합 (예: 반차(사북), 휴무,삼익-고은별 등) -->
+      <div class="mt-4">
+        <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">3. 선택된 내용 (직접 수정·조합 가능)</label>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            id="modalCustomInput"
+            placeholder="예: 사북1, 횡성점(김효정), 반차(원주시청), 휴무"
+            onkeyup="if(event.key==='Enter') saveCellEdit()"
+            class="flex-1 px-3.5 py-2.5 bg-slate-50 border-2 border-blue-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-600 outline-none"
+          />
+          <button type="button" onclick="document.getElementById('modalCustomInput').value=''" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold">
+            비우기
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">💡 팁: 매장을 누른 뒤 '반차'를 누르면 <span class="text-slate-600 font-semibold">'반차(매장명)'</span> 형태로 자동 조합됩니다.</p>
+      </div>
+
+      <!-- 하단 저장 / 취소 버튼 -->
+      <div class="grid grid-cols-3 gap-2 mt-5 pt-3 border-t border-slate-100">
+        <button type="button" onclick="clearAndSaveCell()" class="py-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-sm transition">
+          삭제(미배정)
+        </button>
+        <button type="button" onclick="saveCellEdit()" class="col-span-2 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 active:scale-[0.99] text-white font-extrabold text-sm shadow-md transition">
+          ✓ 설정 저장하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 새 달(1~31일) 생성 모달 ==================== -->
+  <div id="newMonthModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/60 p-4 modal-backdrop" onclick="if(event.target===this) closeNewMonthModal()">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl">
+      <h3 class="text-lg font-extrabold text-slate-900 mb-1">새 근무표 만들기 (1일~31일)</h3>
+      <p class="text-xs text-slate-500 mb-4">1일부터 말일(28~31일)까지 빈 칸을 생성하여 터치로 배정할 수 있습니다.</p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">근무표 이름 (예: 26.12월, 27.01월)</label>
+          <input type="text" id="newMonthName" value="26.12월" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-blue-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">총 일수 선택</label>
+          <select id="newMonthDays" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-blue-600 bg-white">
+            <option value="31" selected>1일 ~ 31일 (31일간)</option>
+            <option value="30">1일 ~ 30일 (30일간)</option>
+            <option value="28">1일 ~ 28일 (28일간)</option>
+            <option value="29">1일 ~ 29일 (29일간)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 mt-5">
+        <button onclick="closeNewMonthModal()" class="py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm">취소</button>
+        <button onclick="createNewMonth()" class="py-2.5 rounded-xl bg-blue-700 text-white font-extrabold text-sm">생성하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 담당자 추가 모달 ==================== -->
+  <div id="addWorkerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/60 p-4 modal-backdrop" onclick="if(event.target===this) closeAddWorkerModal()">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl">
+      <h3 class="text-lg font-extrabold text-slate-900 mb-1">새 근무자 추가</h3>
+      <p class="text-xs text-slate-500 mb-4">현재 근무표에 새로운 담당자 열을 추가합니다.</p>
+      <input type="text" id="newWorkerNameInput" placeholder="이름 입력 (예: 홍길동)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-blue-600 mb-4" />
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="closeAddWorkerModal()" class="py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm">취소</button>
+        <button onclick="confirmAddWorker()" class="py-2.5 rounded-xl bg-blue-700 text-white font-extrabold text-sm">추가하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 알림 메시지 토스트 (alert 대체) ==================== -->
+  <div id="toastBox" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full shadow-lg transition-opacity">
+    저장되었습니다.
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 초기 기준 데이터 (이미지에서 추출한 26.11월 데이터 및 매장 정보)
+    // =========================================================================
+    const STORE_GROUPS = {
+      "이종효": ["원주시청", "시청(황순민)", "혁신도시", "센트럴", "사북", "이안"],
+      "정다영": ["삼익(최별)", "영월(김병구)", "롯데캐슬", "1호", "청구"],
+      "원봉희": ["무실", "고한", "축협(오명애)", "남부", "태장"],
+      "김아름": ["횡성점(김효정)", "영월한반도", "문막천사마트", "원주센트럴", "원주이지더원", "이지더원"]
+    };
+
+    const ALL_STORES = Array.from(new Set(Object.values(STORE_GROUPS).flat()));
+
+    const SUB_WORKERS = ["고은별", "이보람", "이제리"];
+
+    // 26.11월 원본 데이터 (1~30일 + 익월 1~6일 포함, 김아름 변경사항 반영)
+    const INITIAL_2611_ROWS = [
+      { dayLabel: "1일", dayNum: 1, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "삼익(최별)", "원봉희": "휴무", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "2일", dayNum: 2, isNextMonth: false, schedule: { "이종효": "원주시청1", "정다영": "영월(김병구)", "원봉희": "무실1", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "3일", dayNum: 3, isNextMonth: false, schedule: { "이종효": "혁신도시1", "정다영": "영월(김병구)", "원봉희": "고한1", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "4일", dayNum: 4, isNextMonth: false, schedule: { "이종효": "센트럴1", "정다영": "영월(김병구)", "원봉희": "무실2", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "5일", dayNum: 5, isNextMonth: false, schedule: { "이종효": "사북1", "정다영": "롯데캐슬1", "원봉희": "축협(오명애)", "김아름": "영월한반도 1" } },
+      { dayLabel: "6일", dayNum: 6, isNextMonth: false, schedule: { "이종효": "사북2", "정다영": "휴가", "원봉희": "남부1", "김아름": "문막천사마트1" } },
+      { dayLabel: "7일", dayNum: 7, isNextMonth: false, schedule: { "이종효": "휴무,센트럴2-김아름", "정다영": "휴무", "원봉희": "휴무", "김아름": "원주센트럴" } },
+      { dayLabel: "8일", dayNum: 8, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "휴무,삼익-고은별", "원봉희": "휴무", "김아름": "휴무" } },
+      { dayLabel: "9일", dayNum: 9, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "휴가", "원봉희": "축협(오명애)", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "10일", dayNum: 10, isNextMonth: false, schedule: { "이종효": "혁신도시2", "정다영": "영월(김병구)", "원봉희": "고한2", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "11일", dayNum: 11, isNextMonth: false, schedule: { "이종효": "이안", "정다영": "영월(김병구)", "원봉희": "남부 2", "김아름": "영월한반도2" } },
+      { dayLabel: "12일", dayNum: 12, isNextMonth: false, schedule: { "이종효": "사북3", "정다영": "롯데캐슬2", "원봉희": "휴무", "김아름": "휴무,천사2-이보람" } },
+      { dayLabel: "13일", dayNum: 13, isNextMonth: false, schedule: { "이종효": "센트럴3", "정다영": "휴무", "원봉희": "무실3", "김아름": "휴무" } },
+      { dayLabel: "14일", dayNum: 14, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "삼익(최별)", "원봉희": "고한3", "김아름": "휴무" } },
+      { dayLabel: "15일", dayNum: 15, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "롯데캐슬3", "원봉희": "휴무", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "16일", dayNum: 16, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "영월(김병구)", "원봉희": "축협(오명애)", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "17일", dayNum: 17, isNextMonth: false, schedule: { "이종효": "혁신도시3", "정다영": "영월(김병구)", "원봉희": "축협(오명애)", "김아름": "휴무" } },
+      { dayLabel: "18일", dayNum: 18, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "휴무", "원봉희": "남부 3", "김아름": "영월한반도3" } },
+      { dayLabel: "19일", dayNum: 19, isNextMonth: false, schedule: { "이종효": "사북4", "정다영": "휴무", "원봉희": "휴무", "김아름": "횡성점,천사3-이제리" } },
+      { dayLabel: "20일", dayNum: 20, isNextMonth: false, schedule: { "이종효": "센트럴4", "정다영": "비번", "원봉희": "무실4", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "21일", dayNum: 21, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "삼익(최별)", "원봉희": "고한4", "김아름": "이지더원" } },
+      { dayLabel: "22일", dayNum: 22, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "삼익(최별)", "원봉희": "축협(오명애)", "김아름": "휴무" } },
+      { dayLabel: "23일", dayNum: 23, isNextMonth: false, schedule: { "이종효": "센트럴5", "정다영": "롯데캐슬4", "원봉희": "축협(오명애)", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "24일", dayNum: 24, isNextMonth: false, schedule: { "이종효": "혁신도시4", "정다영": "영월(김병구)", "원봉희": "남부4", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "25일", dayNum: 25, isNextMonth: false, schedule: { "이종효": "휴무", "정다영": "영월(김병구)", "원봉희": "고한5", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "26일", dayNum: 26, isNextMonth: false, schedule: { "이종효": "센트럴6", "정다영": "롯데캐슬5", "원봉희": "무실 5", "김아름": "영월한반도 4" } },
+      { dayLabel: "27일", dayNum: 27, isNextMonth: false, schedule: { "이종효": "사북5", "정다영": "삼익(최별)", "원봉희": "남부 5", "김아름": "영월한반도 5" } },
+      { dayLabel: "28일", dayNum: 28, isNextMonth: false, schedule: { "이종효": "사북6", "정다영": "휴무", "원봉희": "축협(오명애)", "김아름": "휴무" } },
+      { dayLabel: "29일", dayNum: 29, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "휴무", "원봉희": "휴무", "김아름": "문막천사마트 4" } },
+      { dayLabel: "30일", dayNum: 30, isNextMonth: false, schedule: { "이종효": "시청(황순민)", "정다영": "삼익(최별)", "원봉희": "고한6", "김아름": "문막천사마트5" } },
+      { dayLabel: "익월 1일", dayNum: 1, isNextMonth: true, schedule: { "이종효": "혁신도시1", "정다영": "1호", "원봉희": "무실 1", "김아름": "휴무" } },
+      { dayLabel: "익월 2일", dayNum: 2, isNextMonth: true, schedule: { "이종효": "센트럴1", "정다영": "롯데캐슬", "원봉희": "남부 1", "김아름": "영월한반도 1" } },
+      { dayLabel: "익월 3일", dayNum: 3, isNextMonth: true, schedule: { "이종효": "사북1", "정다영": "삼익(최별)", "원봉희": "태장 1", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "익월 4일", dayNum: 4, isNextMonth: true, schedule: { "이종효": "시청1", "정다영": "청구", "원봉희": "축협(오명애)", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "익월 5일", dayNum: 5, isNextMonth: true, schedule: { "이종효": "휴무", "정다영": "휴무", "원봉희": "축협(오명애)", "김아름": "횡성점(김효정)" } },
+      { dayLabel: "익월 6일", dayNum: 6, isNextMonth: true, schedule: { "이종효": "휴무", "정다영": "휴무", "원봉희": "휴무", "김아름": "휴무" } }
+    ];
+
+    const SPC_DATA = [
+      { store: "영월(김병구)", info: "26년 3월 17일 (일반위생 1건)" },
+      { store: "횡성(김효정)", info: "26년 7월 7일 (일반위생 1건)" },
+      { store: "횡성축협(오명애)", info: "26년 7월 7일 (적발X)" },
+      { store: "삼익(최별)", info: "26년 4월 23일 (재냉동중점)" },
+      { store: "단관(정해인)", info: "26년 4월 23일 (중점위생1)" },
+      { store: "시청(황순민)", info: "26년 7월 7일 (적발X)" },
+      { store: "단계(함시현)", info: "중점위생1-초콜릿보관미준수, 일반위생1-···" },
+      { store: "관설(김소연)", info: "8월 11일 (중점위생1-연유토핑물 유통기한···)" },
+      { store: "기업3차(최현정)", info: "26년 3월 18일 (적발X)" }
+    ];
+
+    // =========================================================================
+    // 2. 앱 상태 관리 (LocalStorage 연동)
+    // =========================================================================
+    const STORAGE_KEY = "workScheduleApp_v2";
+
+    function createEmptyMonthRows(daysCount) {
+      const rows = [];
+      for (let d = 1; d <= daysCount; d++) {
+        rows.push({
+          dayLabel: `${d}일`,
+          dayNum: d,
+          isNextMonth: false,
+          schedule: { "이종효": "", "정다영": "", "원봉희": "", "김아름": "" }
+        });
+      }
+      return rows;
+    }
+
+    function loadAppState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error("로컬스토리지 로드 오류:", e);
+      }
+      return {
+        activeMonth: "26.11월",
+        selectedWorker: "이종효",
+        months: {
+          "26.11월": {
+            workers: ["이종효", "정다영", "원봉희", "김아름"],
+            rows: JSON.parse(JSON.stringify(INITIAL_2611_ROWS))
+          },
+          "26.12월 (1~31일)": {
+            workers: ["이종효", "정다영", "원봉희", "김아름"],
+            rows: createEmptyMonthRows(31)
+          }
+        }
+      };
+    }
+
+    let appState = loadAppState();
+    let editingTarget = { rowIndex: null, workerName: null };
+
+    function saveAppState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error("저장 오류:", e);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toastBox");
+      toast.textContent = msg;
+      toast.classList.remove("hidden");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 2000);
+    }
+
+    // =========================================================================
+    // 3. 상단 월 선택 & 탭 전환
+    // =========================================================================
+    function renderMonthSelect() {
+      const select = document.getElementById("monthSelect");
+      const monthNames = Object.keys(appState.months);
+      select.innerHTML = monthNames.map(m =>
+        `<option value="${m}" ${m === appState.activeMonth ? "selected" : ""}>${m}</option>`
+      ).join("");
+    }
+
+    function changeMonth(monthName) {
+      appState.activeMonth = monthName;
+      saveAppState();
+      renderWorkerChips();
+      renderPersonDashboard(appState.selectedWorker);
+      renderAllTable();
+    }
+
+    function switchTab(tabName) {
+      ["search", "all", "spc"].forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tabBtn-${t}`);
+        if (t === tabName) {
+          viewEl.classList.remove("hidden");
+          btnEl.className = "tab-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition bg-white text-blue-900 shadow-sm";
+        } else {
+          viewEl.classList.add("hidden");
+          btnEl.className = "tab-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      if (tabName === "all") renderAllTable();
+    }
+
+    // =========================================================================
+    // 4. 이름 검색 & 빠른 선택 칩 렌더링
+    // =========================================================================
+    function renderWorkerChips() {
+      const currentMonthObj = appState.months[appState.activeMonth];
+      const mainWorkers = currentMonthObj.workers;
+      const selected = appState.selectedWorker;
+
+      const mainContainer = document.getElementById("mainWorkerChips");
+      mainContainer.innerHTML = `<span class="text-xs font-bold text-slate-400 shrink-0 mr-1">담당자:</span>` +
+        mainWorkers.map(w => {
+          const isActive = selected === w;
+          return `<button onclick="selectWorker('${w}')" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold transition ${
+            isActive
+              ? "bg-blue-700 text-white shadow-sm"
+              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
+          }">${w}</button>`;
+        }).join("");
+
+      const subContainer = document.getElementById("subWorkerChips");
+      subContainer.innerHTML = `<span class="text-xs font-bold text-slate-400 shrink-0 mr-1">대타/지원:</span>` +
+        SUB_WORKERS.map(w => {
+          const isActive = selected === w;
+          return `<button onclick="selectWorker('${w}')" class="shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition ${
+            isActive
+              ? "bg-slate-800 text-white shadow-sm"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+          }">${w}</button>`;
+        }).join("");
+    }
+
+    function selectWorker(name) {
+      appState.selectedWorker = name;
+      document.getElementById("personSearchInput").value = name;
+      saveAppState();
+      renderWorkerChips();
+      renderPersonDashboard(name);
+    }
+
+    function handleSearchInput() {
+      const val = document.getElementById("personSearchInput").value.trim();
+      if (!val) {
+        showToast("검색할 사람 이름을 입력해 주세요.");
+        return;
+      }
+      selectWorker(val);
+    }
+
+    // =========================================================================
+    // 5. 근태 분류 및 근무일수 / 휴무일수 계산 로직
+    // =========================================================================
+    function classifyCell(rawText) {
+      const val = (rawText || "").trim();
+      if (!val) {
+        return { type: "empty", label: "미배정", workVal: 0, offVal: 0, halfVal: 0, vacVal: 0 };
+      }
+      if (val.includes("반차")) {
+        // 반차는 근무 0.5일, 반차(휴식) 0.5일로 계산
+        return { type: "half", label: val, workVal: 0.5, offVal: 0, halfVal: 1, vacVal: 0 };
+      }
+      if (val.startsWith("휴무")) {
+        return { type: "off", label: val, workVal: 0, offVal: 1, halfVal: 0, vacVal: 0 };
+      }
+      if (val === "휴가" || val === "비번" || val.startsWith("휴가") || val.startsWith("비번")) {
+        return { type: "vac", label: val, workVal: 0, offVal: 0, halfVal: 0, vacVal: 1 };
+      }
+      return { type: "work", label: val, workVal: 1, offVal: 0, halfVal: 0, vacVal: 0 };
+    }
+
+    function extractStoreName(rawText) {
+      // "반차(사북1)" -> "사북", "원주시청1" -> "원주시청"
+      let text = rawText.trim();
+      const halfMatch = text.match(/반차\(([^)]+)\)/);
+      if (halfMatch) {
+        text = halfMatch[1];
+      }
+      text = text.split(",")[0].trim();
+      text = text.replace(/\s*\d+$/, "");
+      return text;
+    }
+
+    function getCellStyleClasses(type) {
+      switch (type) {
+        case "off":
+          return "bg-amber-100 border-amber-300 text-amber-950";
+        case "half":
+          return "bg-orange-100 border-orange-300 text-orange-950";
+        case "vac":
+          return "bg-purple-100 border-purple-300 text-purple-950";
+        case "work":
+          return "bg-emerald-50/90 border-emerald-300 text-slate-900";
+        default:
+          return "bg-white border-dashed border-slate-300 text-slate-400";
+      }
+    }
+
+    // =========================================================================
+    // 6. 개인별 검색 결과 대시보드 & 1~31일 터치 달력 그리드 렌더링
+    // =========================================================================
+    function renderPersonDashboard(personName) {
+      const container = document.getElementById("personDashboard");
+      const currentMonthObj = appState.months[appState.activeMonth];
+      const isMainWorker = currentMonthObj.workers.includes(personName);
+
+      let totalWorkDays = 0;
+      let offList = [];
+      let halfList = [];
+      let vacList = [];
+      let storeCountMap = {};
+      let calendarItems = [];
+
+      currentMonthObj.rows.forEach((row, idx) => {
+        if (isMainWorker) {
+          const raw = row.schedule[personName] || "";
+          const info = classifyCell(raw);
+          totalWorkDays += info.workVal;
+
+          if (info.type === "off") {
+            offList.push({ day: row.dayLabel, note: raw });
+          } else if (info.type === "half") {
+            halfList.push({ day: row.dayLabel, note: raw });
+            const st = extractStoreName(raw);
+            if (st && st !== "반차" && st !== "오전반차" && st !== "오후반차") {
+              storeCountMap[st] = (storeCountMap[st] || 0) + 0.5;
+            }
+          } else if (info.type === "vac") {
+            vacList.push({ day: row.dayLabel, note: raw });
+          } else if (info.type === "work") {
+            const st = extractStoreName(raw);
+            if (st) storeCountMap[st] = (storeCountMap[st] || 0) + 1;
+          }
+
+          calendarItems.push({
+            rowIndex: idx,
+            dayLabel: row.dayLabel,
+            isNextMonth: row.isNextMonth,
+            rawText: raw,
+            info: info
+          });
+        } else {
+          // 대타/지원 인원 검색 시 모든 담당자 열에서 해당 이름 포함 여부 탐색
+          currentMonthObj.workers.forEach(w => {
+            const cellVal = row.schedule[w] || "";
+            if (cellVal.includes(personName)) {
+              totalWorkDays += 1;
+              let extractedPlace = cellVal;
+              cellVal.split(",").forEach(part => {
+                if (part.includes(personName)) {
+                  extractedPlace = part.replace("-" + personName, "").replace(personName, "").trim();
+                }
+              });
+              const st = extractStoreName(extractedPlace);
+              if (st) storeCountMap[st] = (storeCountMap[st] || 0) + 1;
+
+              calendarItems.push({
+                rowIndex: idx,
+                dayLabel: row.dayLabel,
+                isNextMonth: row.isNextMonth,
+                rawText: `${extractedPlace} (${w} 대타)`,
+                info: { type: "work", label: `${extractedPlace} (${w} 대타)` },
+                targetWorker: w
+              });
+            }
+          });
+        }
+      });
+
+      // 검색 결과가 전혀 없는 외부 이름일 때
+      if (!isMainWorker && calendarItems.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-200">
+            <div class="text-3xl mb-2">🔍</div>
+            <p class="text-base font-bold text-slate-800">'${personName}' 님의 근무 기록이 없습니다.</p>
+            <p class="text-xs text-slate-500 mt-1">상단 담당자 버튼을 누르거나 '전체 근무표' 탭에서 새 인원을 추가할 수 있습니다.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 1) 상단 요약 카드 HTML
+      const summaryCardsHtml = `
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
+          <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-slate-500">${personName} 근무일수</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">${totalWorkDays}<span class="text-sm font-bold ml-0.5">일</span></div>
+            ${halfList.length > 0 ? `<div class="text-[10px] text-orange-600 font-semibold mt-0.5">반차 ${halfList.length}회 포함</div>` : ""}
+          </div>
+          <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 border-t-4 border-t-amber-400 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-slate-500">총 휴무일수</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-amber-700 mt-1">${offList.length}<span class="text-sm font-bold ml-0.5">일</span></div>
+          </div>
+          <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 border-t-4 border-t-orange-500 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-slate-500">반차 · 휴가 · 비번</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-purple-800 mt-1">${halfList.length + vacList.length}<span class="text-sm font-bold ml-0.5">건</span></div>
+          </div>
+        </div>
+      `;
+
+      // 2) 휴무일 & 반차/휴가 날짜 뱃지 목록
+      const offBadges = offList.length > 0
+        ? offList.map(item => {
+            const extra = item.note !== "휴무" ? ` (${item.note.replace("휴무,", "")})` : "";
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">${item.day}${extra}</span>`;
+          }).join("")
+        : `<span class="text-xs text-slate-400">배정된 휴무일이 없습니다.</span>`;
+
+      const halfAndVacBadges = [...halfList.map(h => ({ ...h, kind: "half" })), ...vacList.map(v => ({ ...v, kind: "vac" }))]
+        .map(item => {
+          const cls = item.kind === "half"
+            ? "bg-orange-100 text-orange-900 border-orange-300"
+            : "bg-purple-100 text-purple-900 border-purple-300";
+          return `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${cls}">${item.day} · ${item.note}</span>`;
+        }).join("");
+
+      // 3) 매장별 근무 일수 뱃지
+      const storeSorted = Object.entries(storeCountMap).sort((a, b) => b[1] - a[1]);
+      const storeBadges = storeSorted.length > 0
+        ? storeSorted.map(([st, cnt]) =>
+            `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+              <span>${st}</span>
+              <strong class="text-blue-700 font-extrabold">${cnt}일</strong>
+            </span>`
+          ).join("")
+        : `<span class="text-xs text-slate-400">배정된 근무 매장이 없습니다.</span>`;
+
+      const detailsSectionHtml = `
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3.5">
+          ${isMainWorker ? `
+          <div>
+            <div class="text-xs font-extrabold text-slate-600 mb-1.5 flex items-center justify-between">
+              <span>🗓️ 휴무일 (${offList.length}일) ${halfAndVacBadges ? `및 반차·휴가 (${halfList.length + vacList.length}건)` : ""}</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${offBadges}
+              ${halfAndVacBadges}
+            </div>
+          </div>
+          ` : ""}
+          <div class="${isMainWorker ? "pt-3 border-t border-slate-100" : ""}">
+            <div class="text-xs font-extrabold text-slate-600 mb-1.5">🏪 근무 매장별 배정 횟수</div>
+            <div class="flex flex-wrap gap-1.5">
+              ${storeBadges}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 4) 1일 ~ 31일 터치형 달력 칸 그리드
+      const mainRows = calendarItems.filter(item => !item.isNextMonth);
+      const nextMonthRows = calendarItems.filter(item => item.isNextMonth);
+
+      const renderGridCards = (items) => items.map(item => {
+        const cardStyle = getCellStyleClasses(item.info.type);
+        const clickWorker = isMainWorker ? personName : item.targetWorker;
+        return `
+          <button
+            type="button"
+            onclick="openCellEditor(${item.rowIndex}, '${clickWorker}')"
+            class="day-cell flex flex-col justify-between text-left p-2.5 rounded-xl border-2 min-h-[74px] sm:min-h-[82px] shadow-2xs ${cardStyle}"
+          >
+            <div class="w-full flex items-center justify-between">
+              <span class="text-xs font-extrabold ${item.isNextMonth ? "text-blue-700" : "text-slate-700"}">${item.dayLabel}</span>
+              <span class="text-[10px] opacity-60">✎</span>
+            </div>
+            <div class="w-full mt-1.5 text-xs sm:text-[13px] font-extrabold leading-snug break-keep line-clamp-2">
+              ${item.rawText || "<span class='font-normal text-[11px]'>터치하여 설정</span>"}
+            </div>
+          </button>
+        `;
+      }).join("");
+
+      const calendarGridHtml = `
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm sm:text-base font-extrabold text-slate-900">
+                📆 ${personName} 일자별 근무표 (${appState.activeMonth})
+              </h3>
+              <p class="text-[11px] text-slate-500">각 날짜 칸을 터치하면 매장명 · 휴무 · 반차를 바로 설정할 수 있습니다.</p>
+            </div>
+            <button onclick="exportPersonCSV('${personName}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition">
+              📥 개인 내역 저장
+            </button>
+          </div>
+
+          <!-- 범례 -->
+          <div class="flex flex-wrap gap-2 text-[11px] font-bold mb-3 pb-2.5 border-b border-slate-100">
+            <span class="inline-flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-emerald-200 border border-emerald-400 inline-block"></i>매장근무</span>
+            <span class="inline-flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-amber-200 border border-amber-400 inline-block"></i>휴무</span>
+            <span class="inline-flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-orange-200 border border-orange-400 inline-block"></i>반차(0.5)</span>
+            <span class="inline-flex items-center gap-1"><i class="w-2.5 h-2.5 rounded-sm bg-purple-200 border border-purple-400 inline-block"></i>휴가/비번</span>
+          </div>
+
+          <!-- 1일 ~ 말일 그리드 (모바일 3열, 태블릿/PC 5~7열) -->
+          <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
+            ${renderGridCards(mainRows)}
+          </div>
+
+          ${nextMonthRows.length > 0 ? `
+            <div class="mt-4 pt-3 border-t border-dashed border-slate-200">
+              <div class="text-xs font-extrabold text-blue-800 mb-2">📌 익월 이월 근무표 (1일 ~ 6일)</div>
+              <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                ${renderGridCards(nextMonthRows)}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+      `;
+
+      container.innerHTML = summaryCardsHtml + detailsSectionHtml + calendarGridHtml;
+    }
+
+    // =========================================================================
+    // 7. 날짜 칸 클릭/터치 모달 에디터 로직
+    // =========================================================================
+    function openCellEditor(rowIndex, workerName) {
+      editingTarget = { rowIndex, workerName };
+      const currentMonthObj = appState.months[appState.activeMonth];
+      const row = currentMonthObj.rows[rowIndex];
+      const currentVal = row.schedule[workerName] || "";
+
+      document.getElementById("modalWorkerBadge").textContent = `${workerName} 담당자`;
+      document.getElementById("modalDateTitle").textContent = `${appState.activeMonth} ${row.dayLabel} 배정 설정`;
+      document.getElementById("modalCustomInput").value = currentVal;
+
+      // 해당 담당자의 주력 매장 버튼 렌더링
+      const primaryStores = STORE_GROUPS[workerName] || ALL_STORES.slice(0, 6);
+      const otherStores = ALL_STORES.filter(s => !primaryStores.includes(s));
+
+      document.getElementById("primaryStoreButtons").innerHTML = primaryStores.map(store => `
+        <button type="button" onclick="selectStoreInModal('${store}')" class="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-950 border border-emerald-200 text-xs sm:text-sm font-bold transition">
+          ${store}
+        </button>
+      `).join("");
+
+      document.getElementById("otherStoreButtons").innerHTML = otherStores.map(store => `
+        <button type="button" onclick="selectStoreInModal('${store}')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition">
+          ${store}
+        </button>
+      `).join("");
+
+      document.getElementById("cellEditorModal").classList.remove("hidden");
+    }
+
+    function closeCellEditor() {
+      document.getElementById("cellEditorModal").classList.add("hidden");
+    }
+
+    function applyQuickStatus(status) {
+      const input = document.getElementById("modalCustomInput");
+      const current = input.value.trim();
+
+      // 이미 매장명이 입력되어 있는 상태에서 반차를 누르면 "반차(매장명)" 형태로 자동 조합
+      if (status.includes("반차") && current && !current.startsWith("휴무") && !current.includes("반차") && current !== "휴가" && current !== "비번") {
+        input.value = `${status}(${current})`;
+      } else {
+        input.value = status;
+      }
+    }
+
+    function selectStoreInModal(storeName) {
+      const input = document.getElementById("modalCustomInput");
+      const current = input.value.trim();
+
+      // 반차가 먼저 선택되어 있으면 "반차(매장명)"으로 조합
+      if (current === "반차" || current === "오전반차" || current === "오후반차") {
+        input.value = `${current}(${storeName})`;
+      } else {
+        input.value = storeName;
+      }
+    }
+
+    function appendNumberSuffix(numStr) {
+      const input = document.getElementById("modalCustomInput");
+      let val = input.value.trim();
+      if (!val) return;
+      // 끝에 이미 숫자가 있으면 교체, 없으면 추가
+      if (val.endsWith(")")) {
+        val = val.replace(/\d*\)$/, `${numStr})`);
+      } else {
+        val = val.replace(/\s*\d+$/, "") + numStr;
+      }
+      input.value = val;
+    }
+
+    function saveCellEdit() {
+      const { rowIndex, workerName } = editingTarget;
+      if (rowIndex === null || !workerName) return;
+
+      const newVal = document.getElementById("modalCustomInput").value.trim();
+      appState.months[appState.activeMonth].rows[rowIndex].schedule[workerName] = newVal;
+      saveAppState();
+
+      closeCellEditor();
+      renderPersonDashboard(appState.selectedWorker);
+      renderAllTable();
+      showToast(`${workerName} · ${appState.months[appState.activeMonth].rows[rowIndex].dayLabel} 설정이 저장되었습니다.`);
+    }
+
+    function clearAndSaveCell() {
+      document.getElementById("modalCustomInput").value = "";
+      saveCellEdit();
+    }
+
+    // =========================================================================
+    // 8. 전체 근무표 테이블 & SPC 점검표 렌더링
+    // =========================================================================
+    function renderAllTable() {
+      const currentMonthObj = appState.months[appState.activeMonth];
+      const workers = currentMonthObj.workers;
+      document.getElementById("allTableTitle").textContent = `${appState.activeMonth} 전체 근무표 (칸 터치 시 수정)`;
+
+      document.getElementById("allTableHead").innerHTML = `
+        <tr>
+          <th class="py-3 px-2 w-20 bg-slate-100 sticky left-0 z-10">날짜</th>
+          ${workers.map(w => `<th class="py-3 px-2">${w}</th>`).join("")}
+        </tr>
+      `;
+
+      document.getElementById("allTableBody").innerHTML = currentMonthObj.rows.map((row, rIdx) => {
+        const cells = workers.map(w => {
+          const val = row.schedule[w] || "";
+          const info = classifyCell(val);
+          let badgeCls = "text-slate-400";
+          if (info.type === "off") badgeCls = "bg-amber-100 text-amber-900 font-bold px-2 py-1 rounded-md inline-block";
+          else if (info.type === "half") badgeCls = "bg-orange-100 text-orange-900 font-bold px-2 py-1 rounded-md inline-block";
+          else if (info.type === "vac") badgeCls = "bg-purple-100 text-purple-900 font-bold px-2 py-1 rounded-md inline-block";
+          else if (info.type === "work") badgeCls = "text-slate-900 font-semibold";
+
+          return `
+            <td onclick="openCellEditor(${rIdx}, '${w}')" class="py-2.5 px-2 cursor-pointer hover:bg-blue-50/70 transition">
+              <span class="${badgeCls}">${val || "-"}</span>
+            </td>
+          `;
+        }).join("");
+
+        return `
+          <tr class="${row.isNextMonth ? "bg-blue-50/30" : "bg-white"}">
+            <td class="py-2.5 px-2 font-extrabold text-slate-700 bg-slate-50 sticky left-0 border-r border-slate-200">${row.dayLabel}</td>
+            ${cells}
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderSpcTable() {
+      document.getElementById("spcTableBody").innerHTML = SPC_DATA.map(item => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-3 px-4 font-bold text-slate-900">${item.store}</td>
+          <td class="py-3 px-4 text-slate-700">${item.info}</td>
+        </tr>
+      `).join("");
+    }
+
+    // =========================================================================
+    // 9. 새 달(1~31일) 생성, 인원 추가, 초기화 및 엑셀(CSV) 내보내기
+    // =========================================================================
+    function openNewMonthModal() {
+      document.getElementById("newMonthModal").classList.remove("hidden");
+    }
+    function closeNewMonthModal() {
+      document.getElementById("newMonthModal").classList.add("hidden");
+    }
+
+    function createNewMonth() {
+      const name = document.getElementById("newMonthName").value.trim();
+      const days = parseInt(document.getElementById("newMonthDays").value, 10) || 31;
+      if (!name) {
+        showToast("근무표 이름을 입력해 주세요.");
+        return;
+      }
+
+      const currentWorkers = [...appState.months[appState.activeMonth].workers];
+      const rows = [];
+      for (let d = 1; d <= days; d++) {
+        const sched = {};
+        currentWorkers.forEach(w => sched[w] = "");
+        rows.push({
+          dayLabel: `${d}일`,
+          dayNum: d,
+          isNextMonth: false,
+          schedule: sched
+        });
+      }
+
+      appState.months[name] = {
+        workers: currentWorkers,
+        rows: rows
+      };
+      appState.activeMonth = name;
+      saveAppState();
+
+      closeNewMonthModal();
+      renderMonthSelect();
+      renderWorkerChips();
+      renderPersonDashboard(appState.selectedWorker);
+      renderAllTable();
+      showToast(`'${name}' (1일~${days}일) 근무표가 생성되었습니다.`);
+    }
+
+    function openAddWorkerModal() {
+      document.getElementById("newWorkerNameInput").value = "";
+      document.getElementById("addWorkerModal").classList.remove("hidden");
+    }
+    function closeAddWorkerModal() {
+      document.getElementById("addWorkerModal").classList.add("hidden");
+    }
+
+    function confirmAddWorker() {
+      const newName = document.getElementById("newWorkerNameInput").value.trim();
+      if (!newName) return;
+      const mObj = appState.months[appState.activeMonth];
+      if (!mObj.workers.includes(newName)) {
+        mObj.workers.push(newName);
+        mObj.rows.forEach(r => r.schedule[newName] = "");
+        saveAppState();
+      }
+      closeAddWorkerModal();
+      renderWorkerChips();
+      renderAllTable();
+      selectWorker(newName);
+      showToast(`'${newName}' 담당자가 추가되었습니다.`);
+    }
+
+    function confirmResetCurrentMonth() {
+      if (appState.activeMonth === "26.11월") {
+        appState.months["26.11월"] = {
+          workers: ["이종효", "정다영", "원봉희", "김아름"],
+          rows: JSON.parse(JSON.stringify(INITIAL_2611_ROWS))
+        };
+      } else {
+        const mObj = appState.months[appState.activeMonth];
+        mObj.rows.forEach(r => {
+          mObj.workers.forEach(w => r.schedule[w] = "");
+        });
+      }
+      saveAppState();
+      renderWorkerChips();
+      renderPersonDashboard(appState.selectedWorker);
+      renderAllTable();
+      showToast("현재 근무표가 초기화되었습니다.");
+    }
+
+    function downloadCSV(filename, rows) {
+      const csvContent = "\uFEFF" + rows.map(row =>
+        row.map(cell => `"${String(cell || "").replace(/"/g, '""')}"`).join(",")
+      ).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportFullCSV() {
+      const mObj = appState.months[appState.activeMonth];
+      const header = ["날짜", ...mObj.workers];
+      const rows = [header, ...mObj.rows.map(r => [r.dayLabel, ...mObj.workers.map(w => r.schedule[w] || "")])];
+      downloadCSV(`${appState.activeMonth}_전체근무표.csv`, rows);
+    }
+
+    function exportPersonCSV(personName) {
+      const mObj = appState.months[appState.activeMonth];
+      const isMain = mObj.workers.includes(personName);
+      const rows = [["날짜", "담당자", "배정내용"]];
+      mObj.rows.forEach(r => {
+        if (isMain) {
+          rows.push([r.dayLabel, personName, r.schedule[personName] || ""]);
+        } else {
+          mObj.workers.forEach(w => {
+            if ((r.schedule[w] || "").includes(personName)) {
+              rows.push([r.dayLabel, personName, `${r.schedule[w]} (${w} 대타)`]);
+            }
+          });
+        }
+      });
+      downloadCSV(`${appState.activeMonth}_${personName}_근무내역.csv`, rows);
+    }
+
+    // =========================================================================
+    // 10. 초기 실행
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      renderMonthSelect();
+      renderWorkerChips();
+      renderSpcTable();
+      selectWorker(appState.selectedWorker || "이종효");
+    });
+  </script>
+</body>
+</html>

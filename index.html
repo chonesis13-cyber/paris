@@ -30,7 +30,7 @@ button{padding:8px 13px;border:1px solid var(--bd);border-radius:9px;background:
 table{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:13px}
 th,td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:0;text-align:center;background:var(--card)}
 thead th{position:sticky;top:0;z-index:2;padding:6px 4px;background:var(--bg)}
-.dt{position:sticky;left:0;z-index:1;width:54px;padding:4px;font-weight:600;background:var(--bg)}
+th:not(.dt),td:not(.dt){min-width:96px}.dt{position:sticky;left:0;z-index:1;width:54px;padding:4px;font-weight:600;background:var(--bg)}
 thead .dt{z-index:3}.dt small{display:block;font-weight:400;color:var(--mu);font-size:11px}
 .dt.sun{background:var(--gr);color:var(--grt)}.dt.sun small{color:inherit}
 th input,th select{width:100%;margin:1px 0;padding:4px;border:1px solid var(--bd);border-radius:6px;background:var(--card);text-align:center;font-size:13px}
@@ -169,8 +169,8 @@ function subInit(){var bs=uniq(cellsAll().filter(function(v){return v&&sti(v)<0}
  var nm=[];cur().people.forEach(function(p){nm.push(p.name)});cellsAll().forEach(function(v){var m=v.match(/-([^-,]+)$/);if(m)nm.push(m[1])});
  document.getElementById('dl2').innerHTML=uniq(nm).map(function(x){return '<option value="'+esc(x)+'">'}).join('');document.getElementById('sp2').value=''}
 function subRow(sh,i){var p=sh.people[i],a=[],n=dim(sh.ym);
- for(var d=1;d<=n;d++){var m=(sh.cells[i+'-'+d]||'').match(/^(?:휴무|휴가|비번),(.+)-(.+)$/);if(m)a.push(d+'일 '+m[1]+' → '+m[2]);
-  sh.people.forEach(function(q,j){if(j===i)return;var mm=(sh.cells[j+'-'+d]||'').match(/^(?:휴무|휴가|비번),(.+)-(.+)$/);if(mm&&mm[2]===p.name)a.push(d+'일 '+q.name+' 대신 '+mm[1])})}
+ for(var d=1;d<=n;d++){var m=(sh.cells[i+'-'+d]||'').match(/^(?:.+?),(.+)-([^-,]+)$/);if(m)a.push(d+'일 '+m[1]+' → '+m[2]);
+  sh.people.forEach(function(q,j){if(j===i)return;var mm=(sh.cells[j+'-'+d]||'').match(/^(?:.+?),(.+)-([^-,]+)$/);if(mm&&mm[2]===p.name)a.push(d+'일 '+q.name+' 대신 '+mm[1])})}
  return a.length?'<div class="row"><span class="lab">대타</span>'+a.map(function(x){return '<span class="chip p">'+esc(x)+'</span>'}).join('')+'</div>':''}
 function occOld(sh,i,rn){var n=dim(sh.ym),c={};for(var d=1;d<=n;d++){var k=i+'-'+d,v=sh.cells[k]||'';if(!v)continue;
  if(/[,\-]/.test(v)){v.split(/[,\-]/).forEach(function(t){var m=t.trim().match(/^(.*?)(\d+)$/);if(m&&m[1]&&sti(m[1])<0)c[m[1]]=(c[m[1]]||0)+1});continue}
@@ -233,12 +233,12 @@ function seed(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i}
  var sh=S.sheets[k];SEED.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});S.cur=k;S.seeded=1}
 var SD={'영월':['2026-03-17','일반위생1회'],'횡성':['2026-07-07','일반위생1회'],'횡성축협':['2026-07-07','해당X'],'삼익':['2026-04-17',''],'단관':['2026-04-22',''],'시청':['2026-07-07','해당X'],'기업3차':['2026-03-18','해당X']};
 function seed2(){S.stores.forEach(function(s){var a=SD[s.n];if(a&&!s.d){s.d=a[0];s.m=a[1]}});S.seed2=1}
-var SEEDN=['휴무|원주시청1|혁신도시1|센트럴1|사북1|사북2|휴무,센트럴2-김아름|휴무|시청(황순민)|혁신도시2|이안|사북3|센트럴3|휴무|시청(황순민)|시청(황순민)|혁신도시3|휴무|사북4|센트럴4|휴무|시청(황순민)|센트럴5|혁신도시4|휴무|센트럴6|사북5|사북6|시청(황순민)|시청(황순민)','삼익(최별)|영월(김병구)|영월(김병구)|영월(김병구)|롯데캐슬1|휴가|휴무|휴무,삼익-고은별|휴가|영월(김병구)|영월(김병구)|롯데캐슬2|휴무|삼익(최별)|롯데캐슬3|영월(김병구)|영월(김병구)|휴무|휴무|비번|삼익(최별)|삼익(최별)|롯데캐슬4|영월(김병구)|영월(김병구)|롯데캐슬5|삼익(최별)|휴무|휴무|삼익(최별)','휴무|무실1|고한1|무실2|축협(오명애)|남부1|휴무|휴무|축협(오명애)|고한2|남부2|휴무|무실3|고한3|휴무|축협(오명애)|축협(오명애)|남부3|휴무|무실4|고한4|축협(오명애)|축협(오명애)|남부4|고한5|무실5|남부5|축협(오명애)|휴무|고한6','횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도1|문막천사마트1|원주센트럴|휴무|횡성점(김효정)|횡성점(김효정)|영월한반도2|휴무,천사2-이보람|휴무|휴무|횡성점(김효정)|횡성점(김효정)|휴무|영월한반도3|횡성점,천사3-이제리|횡성점(김효정)|원주이지더원|휴무|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도4|영월한반도5|휴무|문막천사마트4|문막천사마트5'];
+var SEEDN=['휴무|원주시청1|혁신도시1|센트럴1|사북1|사북2|휴무,센트럴2-김아름|휴무|시청(황순민)|혁신도시2|이안|사북3|센트럴3|휴무|시청(황순민)|시청(황순민)|혁신도시3|휴무|사북4|센트럴4|휴무|시청(황순민)|센트럴5|혁신도시4|휴무|센트럴6|사북5|사북6|시청(황순민)|시청(황순민)','삼익(최별)|영월(김병구)|영월(김병구)|영월(김병구)|롯데캐슬1|휴가|휴무|휴무,삼익-고은별|휴가|영월(김병구)|영월(김병구)|롯데캐슬2|휴무|삼익(최별)|롯데캐슬3|영월(김병구)|영월(김병구)|휴무|휴무|비번|삼익(최별)|삼익(최별)|롯데캐슬4|영월(김병구)|영월(김병구)|롯데캐슬5|삼익(최별)|휴무|휴무|삼익(최별)','휴무|무실1|고한1|무실2|축협(오명애)|남부1|휴무|휴무|축협(오명애)|고한2|남부2|휴무|무실3|고한3|휴무|축협(오명애)|축협(오명애)|남부3|휴무|무실4|고한4|축협(오명애)|축협(오명애)|남부4|고한5|무실5|남부5|축협(오명애)|휴무|고한6','횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도1|문막천사마트1|원주센트럴|휴무|횡성점(김효정)|횡성점(김효정)|영월한반도2|휴무,천사2-이보람|휴무|휴무|횡성점(김효정)|횡성점(김효정)|휴무|영월한반도3|횡성점,천사3-이제리|횡성점(김효정)|원주이지더원|휴무|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도4|영월한반도5|휴무|문막천사마트4|문막천사마트5','휴무|이안1|휴무|단구1|우산1|평창|평창|관설(김소연)|단구2|관설(김소연)|휴무,이안2-이종효|이안3|휴무,우산2-이제리|단구3|휴무|우산3|휴무|관설(김소연)|이안4|우산4|단구4|관설(김소연)|관설(김소연)|이안5|단구5|휴무,우산5-이제리|이안6|휴무|관설(김소연)|관설(김소연)','휴무|반곡1|원주1호1|기업3차(최현정)|기업3차(최현정)|청구1|휴무|휴무|원주1호2|원주1호3|청구2|반곡2|휴무|기업3차(최현정)|기업3차(최현정)|청구3|휴무|반곡3|기업3차(최현정)|기업3차(최현정)|원주1호4|청구4|반곡4|휴무|기업3차(최현정)|기업3차(최현정)|청구5|비번|휴무|반곡5','단관,단계-고은별|단관(미투입)|단관(미투입)|단관,단계-고은별|단관,단계-이보람|단관 인수인계,평창1-김순섭|단관 인수인계,평창2-김순섭|휴무|단계(황시현)|단계(황시현)|평창3|단관|우산|휴무|휴무|단관|단계(황시현)|단계(황시현)|문막천사|휴무|휴무|휴무|단계(황시현)|단관|평창4|우산|단계(황시현)|시범|휴무|단관','휴무|시범1|무실세영1|이지더원1|휴무|혁신중앙|태장1|태장2|이지더원2|시범2|무실세영2|문막천사|태장3|휴무|이지더원3|무실세영3|시범3|휴무|태장4|무실세영4|휴무,이지더원4-김아름|이지더원|시범4|태장5|무실세영5|무실세영6|비번|휴무,시범5-이제리|휴무|비번','단계|동화1|개운1|단계|단계|휴무,혁신중앙1-이보람|개운2|삼익|동화2|둔내1|혁신중앙2|휴무|휴무|개운3|휴무|동화3|혁신중앙3|휴무|개운4|둔내2|휴무|혁신중앙4|동화4|개운5|휴무|휴무|동화5|혁신중앙5|둔내3|둔내4'];
 var STORE0=[['영월','김병구','2026-03-17','일반위생1건'],['횡성','김효정','2026-07-07','일반위생1건'],['횡성축협','오명애','2026-07-07','적발X'],['삼익','최별','2026-04-23',''],['단관','정혜인','2026-04-23','중점위생1'],['시청','황순민','2026-07-07','적발X'],['단계','황시현','',''],['관설','김소연','2026-08-11','중점위생1'],['기업3차','최현정','2026-03-18','적발X']];
 function seedV2(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i});
  if(k<0){S.sheets.push({ym:'2026-11',people:[],cells:{}});k=S.sheets.length-1}
- var sh=S.sheets[k];sh.people=['이종효','정다영','원봉희','김아름'].map(function(x){return {name:x,job:'',h:8}});sh.cells={};
+ var sh=S.sheets[k];sh.people=['이종효','정다영','원봉희','김아름','김순섭','정상구','이제리','이보람','고은별'].map(function(x){return {name:x,job:'',h:8}});sh.cells={};
  SEEDN.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});
- S.stores=STORE0.map(function(a){return {n:a[0],s:a[1],d:a[2],m:a[3]}});S.master=STORE0.map(function(a){return a[0]});S.cur=k;S.seedv=2}
-function pick(r){KEY='shift-v3-'+r;S=init();if(r==='원주'&&S.seedv!==2)seedV2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0)}
+ S.stores=STORE0.map(function(a){return {n:a[0],s:a[1],d:a[2],m:a[3]}});S.master=STORE0.map(function(a){return a[0]});S.cur=k;S.seedv=4}
+function pick(r){KEY='shift-v3-'+r;S=init();if(r==='원주'&&S.seedv!==4)seedV2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0)}
 </script></body></html>

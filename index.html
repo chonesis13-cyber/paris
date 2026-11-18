@@ -40,7 +40,7 @@ td input:focus{outline:2px solid var(--ac);outline-offset:-2px}
 td.s0{background:var(--yl)}td.s1{background:var(--pu)}td.s2{background:var(--or)}td.w{background:var(--wk)}td.dup{box-shadow:inset 0 0 0 2px var(--bad)}
 tfoot td{padding:6px;background:var(--bg);color:var(--mu);font-size:12px}
 .srow{display:grid;grid-template-columns:1fr 1fr 1.5fr 1.1fr auto;gap:5px;margin-bottom:6px}.srow input{width:100%;min-width:0;font-size:13px;padding:7px 5px}.sh{font-size:12px;color:var(--mu);margin-bottom:2px}.srow select{width:100%;min-width:0;font-size:13px;padding:7px 3px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
-[hidden]{display:none!important}#pk{position:fixed;inset:0;z-index:50}.pkb{position:fixed;background:var(--card);border:1px solid var(--bd);box-shadow:0 8px 24px rgba(0,0,0,.25);width:min(300px,calc(100vw - 16px));max-height:60vh;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}#pkl button{padding:5px 9px;font-size:13px}.pks button{flex:1;padding:6px}.pkh{display:flex;justify-content:space-between;align-items:center}.pks{display:flex;gap:6px}#pki{padding:10px;font-size:16px;border:1px solid var(--bd);border-radius:9px;background:var(--bg)}#pkl{overflow:auto;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;min-height:60px;flex:1}.home{display:grid;gap:12px;margin-top:24px}.home button{padding:28px;font-size:22px;font-weight:700;border-radius:16px}.top{display:flex;gap:10px;align-items:center;margin-bottom:4px}.top h1{margin:0}.note{font-size:12.5px;color:var(--mu);margin-top:8px}
+[hidden]{display:none!important}#pk{position:fixed;inset:0;z-index:50}.pkb{position:fixed;background:var(--card);border:1px solid var(--bd);box-shadow:0 8px 24px rgba(0,0,0,.25);width:min(300px,calc(100vw - 16px));max-height:60vh;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}#pkl button{padding:5px 9px;font-size:13px}.pks button{flex:1;padding:6px}.pkh{display:flex;justify-content:space-between;align-items:center}.pks{display:flex;gap:6px}.pks select,.pks input{flex:2;min-width:0;padding:6px;font-size:13px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}#pki{padding:10px;font-size:16px;border:1px solid var(--bd);border-radius:9px;background:var(--bg)}#pkl{overflow:auto;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;min-height:60px;flex:1}.home{display:grid;gap:12px;margin-top:24px}.home button{padding:28px;font-size:22px;font-weight:700;border-radius:16px}.top{display:flex;gap:10px;align-items:center;margin-bottom:4px}.top h1{margin:0}.note{font-size:12.5px;color:var(--mu);margin-top:8px}
 </style></head><body><main>
 <div id="home"><h1>근무표</h1><p class="sub">지역을 선택해 주세요.</p><div class="home"><button data-r="광명">광명</button><button data-r="안양">안양</button><button data-r="원주">원주</button></div></div>
 <div id="app" hidden><div class="top"><button data-home="1">← 지역</button><h1 id="rt">근무표</h1></div><p class="sub">이름을 입력하면 이번 달 근무일과 휴무일을 바로 확인할 수 있어요.</p>
@@ -50,7 +50,7 @@ tfoot td{padding:6px;background:var(--bg);color:var(--mu);font-size:12px}
 <div class="card" id="stores"></div>
 <button data-rst="1" style="width:100%;color:var(--bad)">이 지역 전체 초기화</button>
 <datalist id="dl"></datalist></div>
-<div id="pk" hidden><div class="pkb"><div class="pkh"><b id="pkt"></b><button data-pkx="1">닫기</button></div><div class="pks"><button data-pv="휴무">휴무</button><button data-pv="휴가">휴가</button><button data-pv="비번">비번</button><button data-pv="__clr">비우기</button></div><input id="pki" placeholder="검색 또는 직접 입력" autocomplete="off"><div id="pkm" class="note" hidden style="color:var(--bad);margin:0"></div><div id="pkl"></div><button class="p" data-pkok="1">입력한 값으로 저장</button></div></div>
+<div id="pk" hidden><div class="pkb"><div class="pkh"><b id="pkt"></b><button data-pkx="1">닫기</button></div><div class="pks"><button data-pv="휴무">휴무</button><button data-pv="휴가">휴가</button><button data-pv="비번">비번</button><button data-pv="__clr">비우기</button></div><div class="pks"><select id="sp1"></select><input id="sp2" list="dl2" placeholder="대타 이름" autocomplete="off"><button data-sub="1">대타</button></div><datalist id="dl2"></datalist><input id="pki" placeholder="검색 또는 직접 입력" autocomplete="off"><div id="pkm" class="note" hidden style="color:var(--bad);margin:0"></div><div id="pkl"></div><button class="p" data-pkok="1">입력한 값으로 저장</button></div></div>
 </main>
 <script>
 var D=['월','화','수','목','금','토','일'],ST=['휴무','휴가','비번'],MAX=52,KEY='';
@@ -112,7 +112,7 @@ function result(){var q=Q(),el=document.getElementById('res');if(!q){el.innerHTM
    +'<div class="row"><span class="lab">근무일</span>'+wh+'</div>'
    +'<div class="row"><span class="lab">휴무일</span>'+ch(o[0],'y')+'</div>'
    +'<div class="row"><span class="lab">휴가</span>'+ch(o[1],'p')+'</div>'
-   +'<div class="row"><span class="lab">비번</span>'+ch(o[2],'r')+'</div>'
+   +'<div class="row"><span class="lab">비번</span>'+ch(o[2],'r')+'</div>'+subRow(sh,i)
    +'<div class="note">근무 '+o.w.length+'일 · 미배정 '+o.e+'일</div>'+(dupTxt(sh,i)?'<div class="note bad">이미 포함된 스케줄: '+esc(dupTxt(sh,i))+'</div>':'')+weeks}).join('<hr style="border:0;border-top:1px solid var(--bd);margin:14px 0">')}
 var AM='';
 function base(v){return v.split(/[,\-]/)[0].trim().replace(/\d+$/,'')}
@@ -153,7 +153,26 @@ function dupTxt(sh,i){var m=dupMap(sh,i);return Object.keys(m).filter(function(k
 function markDup(){var sh=cur();sh.people.forEach(function(p,i){var m=dupMap(sh,i);document.querySelectorAll('input[data-i="'+i+'"]').forEach(function(el){var k=key(el.value),on=!!(k&&m[k]&&m[k].length>1);el.parentNode.classList.toggle('dup',on);el.title=on?'이미 포함된 스케줄':''})})}
 function numMap(){var m={};cellsAll().forEach(function(v){if(!v||sti(v)>-1)return;var f=v.split(/[,\-]/)[0].trim(),b=f.replace(/\d+$/,''),x=m[b]=m[b]||[0,0];x[/\d+$/.test(f)?0:1]++});return m}
 function isNum(b){var x=numMap()[b];return x?x[0]>=x[1]&&x[0]>0:b.indexOf('(')<0}
-function occ(sh,i,rn){var n=dim(sh.ym),c={};for(var d=1;d<=n;d++){var k=i+'-'+d,v=sh.cells[k]||'';if(!v)continue;
+function occ(sh,i,rn){return occ2(sh,i,rn)}
+function occ2(sh,i,rn){var n=dim(sh.ym),c={},pb=[],d,k,v,m;
+ for(d=1;d<=n;d++){v=sh.cells[i+'-'+d]||'';if(v&&sti(v)<0&&!/[,\-]/.test(v)){m=v.match(/^(.*?)(\d+)$/);if(m&&pb.indexOf(m[1])<0)pb.push(m[1])}}
+ function mb(t){for(var q=0;q<pb.length;q++)if(pb[q]===t||(t.length>1&&pb[q].indexOf(t)>-1))return pb[q];return t}
+ for(d=1;d<=n;d++){k=i+'-'+d;v=sh.cells[k]||'';if(!v)continue;
+  if(/[,\-]/.test(v)){var sm=v.match(/^(휴무|휴가|비번),(.*?)(\d*)-(.+)$/);
+   if(sm){if(sm[3]){var b=mb(sm[2]);c[b]=(c[b]||0)+1;if(rn)sh.cells[k]=sm[1]+','+sm[2]+c[b]+'-'+sm[4]}}
+   else v.split(/[,\-]/).forEach(function(t){var mm=t.trim().match(/^(.*?)(\d+)$/);if(mm&&mm[1]&&sti(mm[1])<0){var b2=mb(mm[1]);c[b2]=(c[b2]||0)+1}});
+   continue}
+  if(sti(v)>-1)continue;m=v.match(/^(.*?)(\d+)$/);if(!m)continue;c[m[1]]=(c[m[1]]||0)+1;if(rn)sh.cells[k]=m[1]+c[m[1]]}
+ return c}
+function subInit(){var bs=uniq(cellsAll().filter(function(v){return v&&sti(v)<0}).map(base));
+ document.getElementById('sp1').innerHTML='<option value="">대타 근무지</option>'+bs.map(function(b){return '<option>'+esc(b)+'</option>'}).join('');
+ var nm=[];cur().people.forEach(function(p){nm.push(p.name)});cellsAll().forEach(function(v){var m=v.match(/-([^-,]+)$/);if(m)nm.push(m[1])});
+ document.getElementById('dl2').innerHTML=uniq(nm).map(function(x){return '<option value="'+esc(x)+'">'}).join('');document.getElementById('sp2').value=''}
+function subRow(sh,i){var p=sh.people[i],a=[],n=dim(sh.ym);
+ for(var d=1;d<=n;d++){var m=(sh.cells[i+'-'+d]||'').match(/^(?:휴무|휴가|비번),(.+)-(.+)$/);if(m)a.push(d+'일 '+m[1]+' → '+m[2]);
+  sh.people.forEach(function(q,j){if(j===i)return;var mm=(sh.cells[j+'-'+d]||'').match(/^(?:휴무|휴가|비번),(.+)-(.+)$/);if(mm&&mm[2]===p.name)a.push(d+'일 '+q.name+' 대신 '+mm[1])})}
+ return a.length?'<div class="row"><span class="lab">대타</span>'+a.map(function(x){return '<span class="chip p">'+esc(x)+'</span>'}).join('')+'</div>':''}
+function occOld(sh,i,rn){var n=dim(sh.ym),c={};for(var d=1;d<=n;d++){var k=i+'-'+d,v=sh.cells[k]||'';if(!v)continue;
  if(/[,\-]/.test(v)){v.split(/[,\-]/).forEach(function(t){var m=t.trim().match(/^(.*?)(\d+)$/);if(m&&m[1]&&sti(m[1])<0)c[m[1]]=(c[m[1]]||0)+1});continue}
  if(sti(v)>-1)continue;var m=v.match(/^(.*?)(\d+)$/);if(!m)continue;c[m[1]]=(c[m[1]]||0)+1;if(rn)sh.cells[k]=m[1]+c[m[1]]}
  return c}
@@ -162,7 +181,7 @@ var ARM=null;function armed(k,t,m){if(ARM===k){ARM=null;return true}ARM=k;t.text
 var PK=null;
 function renderPk(){var q=document.getElementById('pki').value.trim().toLowerCase(),a=uniq(cellsAll().filter(function(v){return v&&sti(v)<0}).map(base)).filter(function(v){return !q||v.toLowerCase().indexOf(q)>-1}).slice(0,150);
  document.getElementById('pkl').innerHTML=a.length?a.map(function(v){return '<button data-pv="'+esc(v)+'">'+esc(v)+'</button>'}).join(''):'<div class="note">일치하는 값이 없어요. 위에 직접 입력해서 저장하세요.</div>'}
-function openPk(i,d){var sh=cur();PK={i:i,d:d,warn:''};document.getElementById('pkm').hidden=true;document.getElementById('pkt').textContent=sh.people[i].name+' · '+d+'일 ('+D[wd(sh.ym,d)]+')';var el=document.getElementById('pki');el.value='';el.placeholder='현재: '+(sh.cells[i+'-'+d]||'없음')+' · 검색 또는 직접 입력';renderPk();var pk=document.getElementById('pk'),b=pk.firstChild,c=document.querySelector('input[data-i="'+i+'"][data-d="'+d+'"]'),r=c.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,w=Math.min(300,vw-16),below=vh-r.bottom-8,above=r.top-8,dn=below>=260||below>=above,mh=Math.max(160,Math.min(dn?below:above,vh*0.6));pk.hidden=false;b.style.width=w+'px';b.style.left=Math.max(8,Math.min(r.left,vw-w-8))+'px';b.style.maxHeight=mh+'px';b.style.top=(dn?r.bottom+2:Math.max(8,r.top-2-b.offsetHeight))+'px'}
+function openPk(i,d){var sh=cur();PK={i:i,d:d,warn:''};document.getElementById('pkm').hidden=true;document.getElementById('pkt').textContent=sh.people[i].name+' · '+d+'일 ('+D[wd(sh.ym,d)]+')';var el=document.getElementById('pki');el.value='';el.placeholder='현재: '+(sh.cells[i+'-'+d]||'없음')+' · 검색 또는 직접 입력';renderPk();subInit();var pk=document.getElementById('pk'),b=pk.firstChild,c=document.querySelector('input[data-i="'+i+'"][data-d="'+d+'"]'),r=c.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,w=Math.min(300,vw-16),below=vh-r.bottom-8,above=r.top-8,dn=below>=260||below>=above,mh=Math.max(160,Math.min(dn?below:above,vh*0.6));pk.hidden=false;b.style.width=w+'px';b.style.left=Math.max(8,Math.min(r.left,vw-w-8))+'px';b.style.maxHeight=mh+'px';b.style.top=(dn?r.bottom+2:Math.max(8,r.top-2-b.offsetHeight))+'px'}
 function closePk(){PK=null;document.getElementById('pk').hidden=true}
 document.addEventListener('scroll',function(e){if(PK&&e.target.classList&&e.target.classList.contains('scroll'))closePk()},true);
 function setCell(i,d,v){var sh=cur(),k=i+'-'+d;v=(v||'').trim();
@@ -175,6 +194,11 @@ M.addEventListener('click',function(e){var t=e.target,d=t.dataset||{};
  if(d.i!==undefined&&d.d!==undefined){openPk(+d.i,+d.d);return}
  if(!PK)return;
  if(d.pv!==undefined)setCell(PK.i,PK.d,d.pv==='__clr'?'':d.pv);
+ else if(d.sub){var raw=document.getElementById('sp1').value.trim(),pl=raw.replace(/\(.*?\)/g,'').trim(),nm=document.getElementById('sp2').value.trim();
+  if(!pl||!nm){var pm=document.getElementById('pkm');pm.textContent='대타 근무지와 대타 이름을 모두 정해 주세요.';pm.hidden=false;return}
+  var i0=PK.i,d0=PK.d,sh=cur();setCell(i0,d0,'휴무,'+pl+(isNum(raw)?'1':'')+'-'+nm);
+  var j=-1;sh.people.forEach(function(p,x){if(p.name===nm)j=x});
+  if(j>-1&&j!==i0&&!sh.cells[j+'-'+d0]){sh.cells[j+'-'+d0]=raw;syncCol(j);foot();save();result()}}
  else if(d.pkok)setCell(PK.i,PK.d,document.getElementById('pki').value);
  else if(d.pkx||t.id==='pk')closePk()});
 M.addEventListener('input',function(e){var t=e.target,d=t.dataset,sh=cur();
@@ -195,7 +219,7 @@ M.addEventListener('click',function(e){var t=e.target.closest('button');if(!t)re
  else if(d.fill){var r=fillAuto(sh);AM=r.f?'데이터 기반으로 '+r.f+'칸을 채웠어요.'+(r.skip.length?' (참고 데이터가 없는 사람: '+r.skip.join(', ')+')':''):'채울 빈 칸이 없거나 참고할 데이터가 없어요. 다른 달 표를 먼저 입력해 주세요.'}
  else if(d.renum){sh.people.forEach(function(p,i){occ(sh,i,true)});AM='번호를 날짜 순서대로 정리했어요.'}
  else if(d.clr){if(!armed('c',t,'한 번 더 누르면 비워져요'))return;sh.cells={}}
- else if(d.rst){if(!armed('r',t,'한 번 더 누르면 전체 초기화돼요'))return;try{localStorage.removeItem(KEY)}catch(e){}S=init();if(KEY.slice(-2)==='원주'){seed();seed2()}}
+ else if(d.rst){if(!armed('r',t,'한 번 더 누르면 전체 초기화돼요'))return;try{localStorage.removeItem(KEY)}catch(e){}S=init();if(KEY.slice(-2)==='원주')seedV2()}
  else if(d.auto)auto(sh);
  else if(d.del){if(!armed('d',t,'한 번 더 누르면 삭제돼요'))return;S.sheets.splice(S.cur,1);S.cur=Math.max(0,S.cur-1)}
  else if(d.madd){document.getElementById('mn').value.split(',').forEach(function(x){x=x.trim();if(x&&NM().indexOf(x)<0)S.master.push(x)})}
@@ -209,5 +233,12 @@ function seed(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i}
  var sh=S.sheets[k];SEED.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});S.cur=k;S.seeded=1}
 var SD={'영월':['2026-03-17','일반위생1회'],'횡성':['2026-07-07','일반위생1회'],'횡성축협':['2026-07-07','해당X'],'삼익':['2026-04-17',''],'단관':['2026-04-22',''],'시청':['2026-07-07','해당X'],'기업3차':['2026-03-18','해당X']};
 function seed2(){S.stores.forEach(function(s){var a=SD[s.n];if(a&&!s.d){s.d=a[0];s.m=a[1]}});S.seed2=1}
-function pick(r){KEY='shift-v3-'+r;S=init();if(r==='원주'&&!S.seeded)seed();if(r==='원주'&&!S.seed2)seed2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0)}
+var SEEDN=['휴무|원주시청1|혁신도시1|센트럴1|사북1|사북2|휴무,센트럴2-김아름|휴무|시청(황순민)|혁신도시2|이안|사북3|센트럴3|휴무|시청(황순민)|시청(황순민)|혁신도시3|휴무|사북4|센트럴4|휴무|시청(황순민)|센트럴5|혁신도시4|휴무|센트럴6|사북5|사북6|시청(황순민)|시청(황순민)','삼익(최별)|영월(김병구)|영월(김병구)|영월(김병구)|롯데캐슬1|휴가|휴무|휴무,삼익-고은별|휴가|영월(김병구)|영월(김병구)|롯데캐슬2|휴무|삼익(최별)|롯데캐슬3|영월(김병구)|영월(김병구)|휴무|휴무|비번|삼익(최별)|삼익(최별)|롯데캐슬4|영월(김병구)|영월(김병구)|롯데캐슬5|삼익(최별)|휴무|휴무|삼익(최별)','휴무|무실1|고한1|무실2|축협(오명애)|남부1|휴무|휴무|축협(오명애)|고한2|남부2|휴무|무실3|고한3|휴무|축협(오명애)|축협(오명애)|남부3|휴무|무실4|고한4|축협(오명애)|축협(오명애)|남부4|고한5|무실5|남부5|축협(오명애)|휴무|고한6','횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도1|문막천사마트1|원주센트럴|휴무|횡성점(김효정)|횡성점(김효정)|영월한반도2|휴무,천사2-이보람|휴무|휴무|횡성점(김효정)|횡성점(김효정)|휴무|영월한반도3|횡성점,천사3-이제리|횡성점(김효정)|원주이지더원|휴무|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도4|영월한반도5|휴무|문막천사마트4|문막천사마트5'];
+var STORE0=[['영월','김병구','2026-03-17','일반위생1건'],['횡성','김효정','2026-07-07','일반위생1건'],['횡성축협','오명애','2026-07-07','적발X'],['삼익','최별','2026-04-23',''],['단관','정혜인','2026-04-23','중점위생1'],['시청','황순민','2026-07-07','적발X'],['단계','황시현','',''],['관설','김소연','2026-08-11','중점위생1'],['기업3차','최현정','2026-03-18','적발X']];
+function seedV2(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i});
+ if(k<0){S.sheets.push({ym:'2026-11',people:[],cells:{}});k=S.sheets.length-1}
+ var sh=S.sheets[k];sh.people=['이종효','정다영','원봉희','김아름'].map(function(x){return {name:x,job:'',h:8}});sh.cells={};
+ SEEDN.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});
+ S.stores=STORE0.map(function(a){return {n:a[0],s:a[1],d:a[2],m:a[3]}});S.master=STORE0.map(function(a){return a[0]});S.cur=k;S.seedv=2}
+function pick(r){KEY='shift-v3-'+r;S=init();if(r==='원주'&&S.seedv!==2)seedV2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0)}
 </script></body></html>

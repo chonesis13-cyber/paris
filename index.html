@@ -48,6 +48,7 @@ tfoot td{padding:6px;background:var(--bg);color:var(--mu);font-size:12px}
 <div class="tabs" id="tabs"></div>
 <div class="card" id="sheet"></div>
 <div class="card" id="stores"></div>
+<button data-rst="1" style="width:100%;color:var(--bad)">이 지역 전체 초기화</button>
 <datalist id="dl"></datalist></div>
 <div id="pk" hidden><div class="pkb"><div class="pkh"><b id="pkt"></b><button data-pkx="1">닫기</button></div><div class="pks"><button data-pv="휴무">휴무</button><button data-pv="휴가">휴가</button><button data-pv="비번">비번</button><button data-pv="__clr">비우기</button></div><input id="pki" placeholder="검색 또는 직접 입력" autocomplete="off"><div id="pkm" class="note" hidden style="color:var(--bad);margin:0"></div><div id="pkl"></div><button class="p" data-pkok="1">입력한 값으로 저장</button></div></div>
 </main>
@@ -82,7 +83,7 @@ function stat(sh,i){var n=dim(sh.ym),o={w:[],e:0,0:[],1:[],2:[]};for(var d=1;d<=
 function Q(){return document.getElementById('q').value.trim().toLowerCase()}
 function render(){tabs();sheet();stores();dl();result()}
 function tabs(){document.getElementById('tabs').innerHTML=S.sheets.map(function(s,i){return '<button data-tab="'+i+'" class="'+(i===S.cur?'on':'')+'">'+ttl(s.ym)+'</button>'}).join('')+'<button class="p" data-add="1">+ 표 추가</button>'}
-function sheet(){var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">데이터 기반 자동 배정</button><button data-auto="1">휴무만 자동 배정</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
+function sheet(){var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">데이터 기반 자동 배정</button><button data-auto="1">휴무만 자동 배정</button><button data-clr="1">이 표 비우기</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
  sh.people.forEach(function(p,i){h+='<th><input class="pn" data-pn="'+i+'" value="'+esc(p.name)+'" placeholder="이름" maxlength="8"></th>'});
  h+='</tr></thead><tbody>';
  for(var d=1;d<=n;d++){var w=wd(sh.ym,d);h+='<tr><td class="dt'+(w===6?' sun':'')+'">'+d+'<small>'+D[w]+'</small></td>';
@@ -150,16 +151,24 @@ function key(v){var f=v.split(/[,\-]/)[0].trim();return /\d+$/.test(f)&&sti(v)<0
 function dupMap(sh,i){var m={},n=dim(sh.ym);for(var d=1;d<=n;d++){var k=key(sh.cells[i+'-'+d]||'');if(k)(m[k]=m[k]||[]).push(d)}return m}
 function dupTxt(sh,i){var m=dupMap(sh,i);return Object.keys(m).filter(function(k){return m[k].length>1}).map(function(k){return k+' ('+m[k].join('·')+'일)'}).join(', ')}
 function markDup(){var sh=cur();sh.people.forEach(function(p,i){var m=dupMap(sh,i);document.querySelectorAll('input[data-i="'+i+'"]').forEach(function(el){var k=key(el.value),on=!!(k&&m[k]&&m[k].length>1);el.parentNode.classList.toggle('dup',on);el.title=on?'이미 포함된 스케줄':''})})}
+function numMap(){var m={};cellsAll().forEach(function(v){if(!v||sti(v)>-1)return;var f=v.split(/[,\-]/)[0].trim(),b=f.replace(/\d+$/,''),x=m[b]=m[b]||[0,0];x[/\d+$/.test(f)?0:1]++});return m}
+function isNum(b){var x=numMap()[b];return x?x[0]>=x[1]&&x[0]>0:b.indexOf('(')<0}
+function occ(sh,i,rn){var n=dim(sh.ym),c={};for(var d=1;d<=n;d++){var k=i+'-'+d,v=sh.cells[k]||'';if(!v)continue;
+ if(/[,\-]/.test(v)){v.split(/[,\-]/).forEach(function(t){var m=t.trim().match(/^(.*?)(\d+)$/);if(m&&m[1]&&sti(m[1])<0)c[m[1]]=(c[m[1]]||0)+1});continue}
+ if(sti(v)>-1)continue;var m=v.match(/^(.*?)(\d+)$/);if(!m)continue;c[m[1]]=(c[m[1]]||0)+1;if(rn)sh.cells[k]=m[1]+c[m[1]]}
+ return c}
+function syncCol(i){var sh=cur();document.querySelectorAll('input[data-i="'+i+'"]').forEach(function(el){var v=sh.cells[i+'-'+el.dataset.d]||'';el.value=v;el.parentNode.className=cls(v)})}
+var ARM=null;function armed(k,t,m){if(ARM===k){ARM=null;return true}ARM=k;t.textContent=m;setTimeout(function(){if(ARM===k){ARM=null;if(S)render()}},4000);return false}
 var PK=null;
-function renderPk(){var q=document.getElementById('pki').value.trim().toLowerCase(),a=uniq(cellsAll().filter(function(v){return v&&sti(v)<0})).filter(function(v){return !q||v.toLowerCase().indexOf(q)>-1}).slice(0,150);
+function renderPk(){var q=document.getElementById('pki').value.trim().toLowerCase(),a=uniq(cellsAll().filter(function(v){return v&&sti(v)<0}).map(base)).filter(function(v){return !q||v.toLowerCase().indexOf(q)>-1}).slice(0,150);
  document.getElementById('pkl').innerHTML=a.length?a.map(function(v){return '<button data-pv="'+esc(v)+'">'+esc(v)+'</button>'}).join(''):'<div class="note">일치하는 값이 없어요. 위에 직접 입력해서 저장하세요.</div>'}
 function openPk(i,d){var sh=cur();PK={i:i,d:d,warn:''};document.getElementById('pkm').hidden=true;document.getElementById('pkt').textContent=sh.people[i].name+' · '+d+'일 ('+D[wd(sh.ym,d)]+')';var el=document.getElementById('pki');el.value='';el.placeholder='현재: '+(sh.cells[i+'-'+d]||'없음')+' · 검색 또는 직접 입력';renderPk();var pk=document.getElementById('pk'),b=pk.firstChild,c=document.querySelector('input[data-i="'+i+'"][data-d="'+d+'"]'),r=c.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,w=Math.min(300,vw-16),below=vh-r.bottom-8,above=r.top-8,dn=below>=260||below>=above,mh=Math.max(160,Math.min(dn?below:above,vh*0.6));pk.hidden=false;b.style.width=w+'px';b.style.left=Math.max(8,Math.min(r.left,vw-w-8))+'px';b.style.maxHeight=mh+'px';b.style.top=(dn?r.bottom+2:Math.max(8,r.top-2-b.offsetHeight))+'px'}
 function closePk(){PK=null;document.getElementById('pk').hidden=true}
 document.addEventListener('scroll',function(e){if(PK&&e.target.classList&&e.target.classList.contains('scroll'))closePk()},true);
 function setCell(i,d,v){var sh=cur(),k=i+'-'+d;v=(v||'').trim();
- var kk=key(v);if(kk){var mm=dupMap(sh,i),o=(mm[kk]||[]).filter(function(x){return x!==d});if(o.length&&PK.warn!==v){PK.warn=v;var pm=document.getElementById('pkm');pm.textContent='이미 포함된 스케줄이에요: '+kk+' ('+o.join('·')+'일). 그래도 넣으려면 한 번 더 눌러 주세요.';pm.hidden=false;return}}
+ var kk='';if(v&&sti(v)<0&&!/[,\-]/.test(v)){var bb=v.replace(/\d+$/,'');if(bb&&isNum(bb))v=bb+'1'}if(kk){var mm=dupMap(sh,i),o=(mm[kk]||[]).filter(function(x){return x!==d});if(o.length&&PK.warn!==v){PK.warn=v;var pm=document.getElementById('pkm');pm.textContent='이미 포함된 스케줄이에요: '+kk+' ('+o.join('·')+'일). 그래도 넣으려면 한 번 더 눌러 주세요.';pm.hidden=false;return}}
  if(v)sh.cells[k]=v;else delete sh.cells[k];
- var el=document.querySelector('input[data-i="'+i+'"][data-d="'+d+'"]');if(el){el.value=v;el.parentNode.className=cls(v)}
+ var el=document.querySelector('input[data-i="'+i+'"][data-d="'+d+'"]');if(el){el.value=v;el.parentNode.className=cls(v)}occ(sh,i,true);syncCol(i);
  markDup();save();foot();result();closePk()}
 var M=document.querySelector('main');
 M.addEventListener('click',function(e){var t=e.target,d=t.dataset||{};
@@ -184,8 +193,10 @@ M.addEventListener('click',function(e){var t=e.target.closest('button');if(!t)re
  if(d.tab!==undefined)S.cur=+d.tab;
  else if(d.add){var p=parts(S.sheets[S.sheets.length-1].ym),y=p[0],m=p[1]+1;if(m>12){m=1;y++}var n={ym:y+'-'+pad(m),people:clone(sh.people),cells:{}};if(!fillAuto(n).f)auto(n);S.sheets.push(n);S.cur=S.sheets.length-1}
  else if(d.fill){var r=fillAuto(sh);AM=r.f?'데이터 기반으로 '+r.f+'칸을 채웠어요.'+(r.skip.length?' (참고 데이터가 없는 사람: '+r.skip.join(', ')+')':''):'채울 빈 칸이 없거나 참고할 데이터가 없어요. 다른 달 표를 먼저 입력해 주세요.'}
+ else if(d.clr){if(!armed('c',t,'한 번 더 누르면 비워져요'))return;sh.cells={}}
+ else if(d.rst){if(!armed('r',t,'한 번 더 누르면 전체 초기화돼요'))return;try{localStorage.removeItem(KEY)}catch(e){}S=init();if(KEY.slice(-2)==='원주'){seed();seed2()}}
  else if(d.auto)auto(sh);
- else if(d.del){if(!confirm('이 표를 삭제할까요?'))return;S.sheets.splice(S.cur,1);S.cur=Math.max(0,S.cur-1)}
+ else if(d.del){if(!armed('d',t,'한 번 더 누르면 삭제돼요'))return;S.sheets.splice(S.cur,1);S.cur=Math.max(0,S.cur-1)}
  else if(d.madd){document.getElementById('mn').value.split(',').forEach(function(x){x=x.trim();if(x&&NM().indexOf(x)<0)S.master.push(x)})}
  else if(d.sadd)S.stores.push({n:'',s:'',d:''});
  else if(d.sx!==undefined)S.stores.splice(+d.sx,1);

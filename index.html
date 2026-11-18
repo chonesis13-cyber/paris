@@ -82,7 +82,7 @@ function stat(sh,i){var n=dim(sh.ym),o={w:[],e:0,0:[],1:[],2:[]};for(var d=1;d<=
 function Q(){return document.getElementById('q').value.trim().toLowerCase()}
 function render(){tabs();sheet();stores();dl();result()}
 function tabs(){document.getElementById('tabs').innerHTML=S.sheets.map(function(s,i){return '<button data-tab="'+i+'" class="'+(i===S.cur?'on':'')+'">'+ttl(s.ym)+'</button>'}).join('')+'<button class="p" data-add="1">+ 표 추가</button>'}
-function sheet(){var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">데이터 기반 자동 배정</button><button data-auto="1">휴무만 자동 배정</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
+function sheet(){var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">자동 배정</button><button data-auto="1">휴무만 자동 배정</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
  sh.people.forEach(function(p,i){h+='<th><input class="pn" data-pn="'+i+'" value="'+esc(p.name)+'" placeholder="이름" maxlength="8"></th>'});
  h+='</tr></thead><tbody>';
  for(var d=1;d<=n;d++){var w=wd(sh.ym,d);h+='<tr><td class="dt'+(w===6?' sun':'')+'">'+d+'<small>'+D[w]+'</small></td>';

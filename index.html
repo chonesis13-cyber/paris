@@ -42,8 +42,9 @@ tfoot td{padding:6px;background:var(--bg);color:var(--mu);font-size:12px}
 .srow{display:grid;grid-template-columns:1fr 1fr 1.5fr 1.1fr auto;gap:5px;margin-bottom:6px}.srow input{width:100%;min-width:0;font-size:13px;padding:7px 5px}.sh{font-size:12px;color:var(--mu);margin-bottom:2px}.srow select{width:100%;min-width:0;font-size:13px;padding:7px 3px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
 [hidden]{display:none!important}#pk{position:fixed;inset:0;z-index:50}.pkb{position:fixed;background:var(--card);border:1px solid var(--bd);box-shadow:0 8px 24px rgba(0,0,0,.25);width:min(300px,calc(100vw - 16px));max-height:60vh;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}#pkl button{padding:5px 9px;font-size:13px}.pks button{flex:1;padding:6px}.pkh{display:flex;justify-content:space-between;align-items:center}.pks{display:flex;gap:6px}.pks select,.pks input{flex:2;min-width:0;padding:6px;font-size:13px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}#pki{padding:10px;font-size:16px;border:1px solid var(--bd);border-radius:9px;background:var(--bg)}#pkl{overflow:auto;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;min-height:60px;flex:1}.home{display:grid;gap:12px;margin-top:24px}.home button{padding:28px;font-size:22px;font-weight:700;border-radius:16px}.top{display:flex;gap:10px;align-items:center;margin-bottom:4px}.top h1{margin:0}.note{font-size:12.5px;color:var(--mu);margin-top:8px}
 </style></head><body><main>
+<div id="login" class="card" hidden><b>팀 비밀번호</b><p class="note">처음 한 번만 입력하면 이 기기에서는 다시 묻지 않아요.</p><div class="bar"><input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="pwb" class="p">확인</button></div><div id="pwm" class="note"></div></div>
 <div id="home"><h1>근무표</h1><p class="sub">지역을 선택해 주세요.</p><div class="home"><button data-r="광명">광명</button><button data-r="안양">안양</button><button data-r="원주">원주</button></div></div>
-<div id="app" hidden><div class="top"><button data-home="1">← 지역</button><h1 id="rt">근무표</h1></div><p class="sub">이름을 입력하면 이번 달 근무일과 휴무일을 바로 확인할 수 있어요.</p>
+<div id="app" hidden><div class="top"><button data-home="1">← 지역</button><h1 id="rt">근무표</h1></div><p class="sub">이름을 입력하면 이번 달 근무일과 휴무일을 바로 확인할 수 있어요.</p><div id="sync" class="note" style="margin:0 0 10px"></div>
 <div class="card"><input id="q" type="search" placeholder="이름 입력" autocomplete="off"><div id="res"></div></div>
 <div class="tabs" id="tabs"></div>
 <div class="card" id="sheet"></div>
@@ -59,7 +60,7 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 function pad(n){return String(n).padStart(2,'0')}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function ls(){try{var s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}sched()}
 function parts(ym){var a=ym.split('-');return [+a[0],+a[1]]}
 function ttl(ym){var a=parts(ym);return String(a[0]).slice(2)+'.'+a[1]+'월'}
 function dim(ym){var a=parts(ym);return new Date(a[0],a[1],0).getDate()}
@@ -76,21 +77,21 @@ function auto(sh){var r=pattern(sh.people),n=dim(sh.ym);
 function init(){var s=ls();if(s&&s.sheets&&s.sheets.length)return s;var n=new Date(),sh={ym:n.getFullYear()+'-'+pad(n.getMonth()+1),people:(KEY.slice(-2)==='원주'?['이종효','정다영','원봉희','김아름']:['','','','']).map(function(x,i){return {name:x,job:'',h:i<2?8:9}}),cells:{}};auto(sh);
  return {cur:0,sheets:[sh],stores:KEY.slice(-2)==='원주'?SN.map(function(x,i){return {n:x,s:SS[i],d:''}}):[]}}
 var S=null;
-function cur(){return S.sheets[S.cur]}
+function cur(){return S?S.sheets[S.cur]:null}
 function sti(v){for(var k=0;k<3;k++)if(v.indexOf(ST[k])===0)return k;return -1}
 function cls(v){var k=sti(v);return k>-1?'s'+k:(v?'w':'')}
 function stat(sh,i){var n=dim(sh.ym),o={w:[],e:0,0:[],1:[],2:[]};for(var d=1;d<=n;d++){var v=sh.cells[i+'-'+d]||'',k=sti(v);if(!v)o.e++;else if(k>-1)o[k].push(d);else o.w.push(d)}return o}
 function Q(){return document.getElementById('q').value.trim().toLowerCase()}
 function render(){tabs();sheet();stores();dl();result()}
 function tabs(){document.getElementById('tabs').innerHTML=S.sheets.map(function(s,i){return '<button data-tab="'+i+'" class="'+(i===S.cur?'on':'')+'">'+ttl(s.ym)+'</button>'}).join('')+'<button class="p" data-add="1">+ 표 추가</button>'}
-function sheet(){var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">데이터 기반 자동 배정</button><button data-auto="1">휴무만 자동 배정</button><button data-clr="1">이 표 비우기</button><button data-renum="1">번호 정리</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
+function sheet(){var sc0=document.querySelector('#sheet .scroll'),pos=sc0?[sc0.scrollTop,sc0.scrollLeft]:null;var sh=cur(),n=dim(sh.ym),h='<div class="bar"><input type="month" data-ym="1" value="'+sh.ym+'"><button class="p" data-fill="1">데이터 기반 자동 배정</button><button data-auto="1">휴무만 자동 배정</button><button data-clr="1">이 표 비우기</button><button data-renum="1">번호 정리</button>'+(S.sheets.length>1?'<button data-del="1">이 표 삭제</button>':'')+'</div>'+(AM?'<div class="note" style="margin:0 0 8px">'+esc(AM)+'</div>':'')+'<div class="scroll"><table><thead><tr><th class="dt">일</th>';
  sh.people.forEach(function(p,i){h+='<th><input class="pn" data-pn="'+i+'" value="'+esc(p.name)+'" placeholder="이름" maxlength="8"></th>'});
  h+='</tr></thead><tbody>';
  for(var d=1;d<=n;d++){var w=wd(sh.ym,d);h+='<tr><td class="dt'+(w===6?' sun':'')+'">'+d+'<small>'+D[w]+'</small></td>';
   for(var i=0;i<sh.people.length;i++){var v=sh.cells[i+'-'+d]||'';h+='<td class="'+cls(v)+'"><input readonly data-i="'+i+'" data-d="'+d+'" value="'+esc(v)+'"></td>'}
   h+='</tr>'}
  h+='</tbody><tfoot id="ft"></tfoot></table></div><p class="note">칸에 매장명을 쓰거나 목록에서 고르세요. 휴무(노랑)·휴가(보라)·비번(주황)은 색으로 표시돼요. 일요일은 초록색이에요.</p>'+summary(sh);
- document.getElementById('sheet').innerHTML=h;foot();markDup()}
+ document.getElementById('sheet').innerHTML=h;foot();markDup();if(pos){var sc1=document.querySelector('#sheet .scroll');if(sc1){sc1.scrollTop=pos[0];sc1.scrollLeft=pos[1]}}}
 function foot(){var sh=cur(),el=document.getElementById('ft');if(!el)return;el.innerHTML='<tr><td class="dt">근무</td>'+sh.people.map(function(p,i){return '<td>'+stat(sh,i).w.length+'일</td>'}).join('')+'</tr>'}
 function uniq(a){var o={},r=[];a.forEach(function(x){x=(x||'').trim();if(x&&!o[x]){o[x]=1;r.push(x)}});return r.sort(function(a,b){return a.localeCompare(b,'ko')})}
 function cellsAll(){var a=[];S.sheets.forEach(function(sh){Object.keys(sh.cells).forEach(function(k){a.push(sh.cells[k])})});return a}
@@ -191,7 +192,7 @@ function setCell(i,d,v){var sh=cur(),k=i+'-'+d;v=(v||'').trim();
  markDup();save();foot();result();closePk()}
 var M=document.querySelector('main');
 M.addEventListener('click',function(e){var t=e.target,d=t.dataset||{};
- if(d.i!==undefined&&d.d!==undefined){openPk(+d.i,+d.d);return}
+ if(d.i!==undefined&&d.d!==undefined){if(ro()){warn();return}openPk(+d.i,+d.d);return}
  if(!PK)return;
  if(d.pv!==undefined)setCell(PK.i,PK.d,d.pv==='__clr'?'':d.pv);
  else if(d.sub){var raw=document.getElementById('sp1').value.trim(),pl=raw.replace(/\(.*?\)/g,'').trim(),nm=document.getElementById('sp2').value.trim();
@@ -202,7 +203,7 @@ M.addEventListener('click',function(e){var t=e.target,d=t.dataset||{};
  else if(d.pkok)setCell(PK.i,PK.d,document.getElementById('pki').value);
  else if(d.pkx||t.id==='pk')closePk()});
 M.addEventListener('input',function(e){var t=e.target,d=t.dataset,sh=cur();
- if(t.id==='q'){result();return}if(t.id==='pki'){renderPk();return}
+ if(t.id==='pw')return;if(t.id==='q'){result();return}if(t.id==='pki'){renderPk();return}if(ro()&&(d.pn!==undefined||d.sd!==undefined||d.sm!==undefined)){warn();render();return}
  if(d.i!==undefined){var v=t.value.trim(),k=d.i+'-'+d.d;if(v)sh.cells[k]=v;else delete sh.cells[k];t.parentNode.className=cls(v);foot();result()}
  else if(d.pn!==undefined){sh.people[+d.pn].name=t.value;result()}
  else if(d.pj!==undefined){sh.people[+d.pj].job=t.value;result()}
@@ -210,10 +211,11 @@ M.addEventListener('input',function(e){var t=e.target,d=t.dataset,sh=cur();
  else if(d.sm!==undefined)S.stores[+d.sm].m=t.value;
  save()});
 M.addEventListener('change',function(e){var t=e.target,d=t.dataset,sh=cur();
+ if(ro()&&(d.sn!==undefined||d.ss!==undefined||d.ym!==undefined)){warn();render();return}
  if(d.sn!==undefined||d.ss!==undefined){var isN=d.sn!==undefined,i=+(isN?d.sn:d.ss),v=t.value;if(v==='__new'){v=(prompt(isN?'매장명을 입력하세요':'담당자 이름을 입력하세요')||'').trim();if(!v){stores();return}}if(isN&&v&&NM().indexOf(v)<0)S.master.push(v);S.stores[i][isN?'n':'s']=v;save();dl();stores()}
  else if(d.ph!==undefined){sh.people[+d.ph].h=+t.value;save();result()}
  else if(d.ym!==undefined&&t.value){sh.ym=t.value;save();render()}});
-M.addEventListener('click',function(e){var t=e.target.closest('button');if(!t)return;var d=t.dataset;if(d.r){pick(d.r);return}if(d.home){S=null;document.getElementById('app').hidden=true;document.getElementById('home').hidden=false;window.scrollTo(0,0);return}var sh=cur();AM='';
+M.addEventListener('click',function(e){var t=e.target.closest('button');if(!t||t.id==='pwb')return;var d=t.dataset;if(d.r){pick(d.r);return}if(d.home){dbStop();S=null;document.getElementById('app').hidden=true;document.getElementById('home').hidden=false;window.scrollTo(0,0);return}if(ro()&&(d.add||d.fill||d.auto||d.clr||d.renum||d.del||d.sadd||d.sx!==undefined||d.madd||d.rst)){warn();return}if(d.rst&&LIVE&&CANE===false){note('\uc804\uccb4 \ucd08\uae30\ud654\ub294 \ud3b8\uc9d1 \uad8c\ud55c\uc774 \uc788\ub294 \uc0ac\ub78c\ub9cc \ud560 \uc218 \uc788\uc5b4\uc694.');return}var sh=cur();AM='';
  if(d.tab!==undefined)S.cur=+d.tab;
  else if(d.add){var p=parts(S.sheets[S.sheets.length-1].ym),y=p[0],m=p[1]+1;if(m>12){m=1;y++}var n={ym:y+'-'+pad(m),people:clone(sh.people),cells:{}};if(!fillAuto(n).f)auto(n);S.sheets.push(n);S.cur=S.sheets.length-1}
  else if(d.fill){var r=fillAuto(sh);AM=r.f?'데이터 기반으로 '+r.f+'칸을 채웠어요.'+(r.skip.length?' (참고 데이터가 없는 사람: '+r.skip.join(', ')+')':''):'채울 빈 칸이 없거나 참고할 데이터가 없어요. 다른 달 표를 먼저 입력해 주세요.'}
@@ -233,6 +235,49 @@ function seed(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i}
  var sh=S.sheets[k];SEED.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});S.cur=k;S.seeded=1}
 var SD={'영월':['2026-03-17','일반위생1회'],'횡성':['2026-07-07','일반위생1회'],'횡성축협':['2026-07-07','해당X'],'삼익':['2026-04-17',''],'단관':['2026-04-22',''],'시청':['2026-07-07','해당X'],'기업3차':['2026-03-18','해당X']};
 function seed2(){S.stores.forEach(function(s){var a=SD[s.n];if(a&&!s.d){s.d=a[0];s.m=a[1]}});S.seed2=1}
+var DB=null,USR=null,CANW=null,CANE=null,LIVE=false,SYNCED=false,REG='',CURR='',SH={},META='',UNS=[],PT=null,DIRTY=false,TO=null,Q0=Promise.resolve();
+var RID={'광명':'gm','안양':'ay','원주':'wj'};
+function note(t){var e=document.getElementById('sync');if(e)e.textContent=t||''}
+function ro(){return LIVE&&(CANW===false||!SYNCED)}
+function warn(){note(CANW===false?'보기 전용이에요. 수정하려면 공유 설정에서 편집 권한이 필요해요.':'공유 데이터를 불러오는 중이에요. 잠시 후 다시 눌러 주세요.')}
+function status(){if(!LIVE)note('이 브라우저에만 저장돼요 (공유 안 됨)');else if(!SYNCED)note('공유 데이터를 불러오는 중…');else if(CANW===false)note('보기 전용 · 수정하려면 편집 권한이 필요해요');else note('공유 중 · 누가 고치면 모두에게 바로 반영돼요')}
+function onErr(e){var c=e&&e.code;if(c==='invalid_argument'||c==='revoked')CANW=false;status();if(c==='quota_exceeded')note('공유 저장 용량이 가득 찼어요.')}
+function dbq(fn){Q0=Q0.then(fn).catch(onErr)}
+function refresh(){if(!S)return;var ae=document.activeElement,inS=ae&&ae.closest&&ae.closest('#stores'),inH=ae&&ae.closest&&ae.closest('#sheet');tabs();if(!inH)sheet();if(!inS)stores();dl();result()}
+function dbStop(){UNS.forEach(function(u){try{u()}catch(e){}});UNS=[];clearTimeout(PT);clearTimeout(TO);REG='';CURR='';SYNCED=false;SH={};META='';DIRTY=false;note('')}
+function dbStart(){clearTimeout(PT);DIRTY=false;REG=RID[CURR]||'';if(!DB||!REG){LIVE=false;status();return}LIVE=true;SYNCED=false;status();
+ var base='regions/'+REG+'/';
+ TO=setTimeout(function(){if(!SYNCED){LIVE=false;status()}},10000);
+ UNS.push(DB.collection(base+'sheets').onSnapshot(function(snap){if(snap.metadata.hasPendingWrites)return;remoteSheets(snap)},function(e){LIVE=false;onErr(e);status()}));
+ UNS.push(DB.doc(base+'meta/main').onSnapshot(function(s){if(s.metadata.hasPendingWrites||!S||DIRTY)return;if(s.exists){var v=s.data()||{};S.stores=clone(v.stores||[]);S.master=clone(v.master||[]);META=JSON.stringify([S.stores,S.master]);refresh()}},function(e){onErr(e)}))}
+function remoteSheets(snap){if(!S||DIRTY)return;var arr=[];snap.docs.forEach(function(d){var v=d.data()||{},c={},cc=v.cells||{};Object.keys(cc).forEach(function(k){if(cc[k])c[k]=cc[k]});arr.push({ym:v.ym||d.id,people:clone(v.people||[]),cells:c})});
+ if(!snap.metadata.fromCache){SYNCED=true;LIVE=true;clearTimeout(TO)}
+ if(arr.length){arr.sort(function(a,b){return a.ym<b.ym?-1:a.ym>b.ym?1:0});var cy=S.sheets[S.cur]&&S.sheets[S.cur].ym,ix=-1;arr.forEach(function(x,i){if(x.ym===cy)ix=i});
+  S.sheets=arr;S.cur=ix>-1?ix:arr.length-1;SH={};arr.forEach(function(x){SH[x.ym]={p:JSON.stringify(x.people),c:clone(x.cells)}})}
+ status();refresh()}
+function sched(){DIRTY=true;clearTimeout(PT);PT=setTimeout(push,200)}
+function push(){if(!DB||!LIVE||!SYNCED||!REG||CANW===false||!DIRTY||!S)return;DIRTY=false;var base='regions/'+REG+'/';
+ S.sheets.forEach(function(sh){var sd=SH[sh.ym],pj=JSON.stringify(sh.people),path=base+'sheets/'+sh.ym;
+  if(!sd){SH[sh.ym]={p:pj,c:clone(sh.cells)};var d0={ym:sh.ym,people:clone(sh.people),cells:clone(sh.cells)};dbq(function(){return DB.doc(path).set(d0)});return}
+  var up={},n=0,k;for(k in sh.cells)if(sd.c[k]!==sh.cells[k]){up[k]=sh.cells[k];n++}
+  for(k in sd.c)if(!(k in sh.cells)){up[k]='';n++}
+  if(n||pj!==sd.p){var d1={};if(n)d1.cells=up;if(pj!==sd.p)d1.people=clone(sh.people);SH[sh.ym]={p:pj,c:clone(sh.cells)};
+   var full={ym:sh.ym,people:clone(sh.people),cells:clone(sh.cells)};
+   dbq(function(){return DB.doc(path).update(d1).catch(function(){return DB.doc(path).set(full)})})}});
+ Object.keys(SH).forEach(function(ym){if(!S.sheets.some(function(x){return x.ym===ym})){delete SH[ym];dbq(function(){return DB.doc(base+'sheets/'+ym).delete()})}});
+ var mj=JSON.stringify([S.stores,S.master||[]]);if(mj!==META){META=mj;var d2={stores:clone(S.stores),master:clone(S.master||[])};dbq(function(){return DB.doc(base+'meta/main').set(d2)})}}
+function makeAdapter(F){function P(p){return F.ref(F.rdb,p)}
+ function flat(d){var o={};Object.keys(d).forEach(function(k){var v=d[k];if(k==='cells'&&v&&typeof v==='object'){Object.keys(v).forEach(function(c){o['cells/'+c]=v[c]===''?null:v[c]})}else o[k]=v});return o}
+ function snapOf(s){return {exists:s.exists(),data:function(){return s.val()},metadata:{fromCache:false,hasPendingWrites:false}}}
+ return {doc:function(path){return{set:function(d){return F.set(P(path),JSON.parse(JSON.stringify(d)))},update:function(d){return F.update(P(path),flat(JSON.parse(JSON.stringify(d))))},delete:function(){return F.remove(P(path))},onSnapshot:function(next,err){return F.onValue(P(path),function(s){next(snapOf(s))},err)}}},
+  collection:function(path){return{onSnapshot:function(next,err){return F.onValue(P(path),function(s){var docs=[];s.forEach(function(c){docs.push({id:c.key,exists:true,data:function(){return c.val()},metadata:{}})});next({docs:docs,size:docs.length,empty:!docs.length,metadata:{fromCache:false,hasPendingWrites:false}})},err)}}}}}
+function extDB(a){DB=a;CANW=true;CANE=true;dbReady()}
+function extErr(e){note('공유 저장을 불러오지 못했어요. 이 기기에만 저장돼요.')}
+function needLogin(fn){var b=document.getElementById('login');if(!b)return;b.hidden=false;
+ var go=function(){var pw=document.getElementById('pw').value,m=document.getElementById('pwm');if(!pw){m.textContent='비밀번호를 입력해 주세요.';return}m.textContent='확인 중…';
+  fn(pw).then(function(){b.hidden=true;document.getElementById('pw').value=''}).catch(function(){m.textContent='비밀번호가 맞지 않아요.'})};
+ document.getElementById('pwb').onclick=go;document.getElementById('pw').onkeydown=function(e){if(e.key==='Enter')go()}}
+function dbReady(){if(CURR&&S)dbStart()}
 var SEEDN=['휴무|원주시청1|혁신도시1|센트럴1|사북1|사북2|휴무,센트럴2-김아름|휴무|시청(황순민)|혁신도시2|이안|사북3|센트럴3|휴무|시청(황순민)|시청(황순민)|혁신도시3|휴무|사북4|센트럴4|휴무|시청(황순민)|센트럴5|혁신도시4|휴무|센트럴6|사북5|사북6|시청(황순민)|시청(황순민)','삼익(최별)|영월(김병구)|영월(김병구)|영월(김병구)|롯데캐슬1|휴가|휴무|휴무,삼익-고은별|휴가|영월(김병구)|영월(김병구)|롯데캐슬2|휴무|삼익(최별)|롯데캐슬3|영월(김병구)|영월(김병구)|휴무|휴무|비번|삼익(최별)|삼익(최별)|롯데캐슬4|영월(김병구)|영월(김병구)|롯데캐슬5|삼익(최별)|휴무|휴무|삼익(최별)','휴무|무실1|고한1|무실2|축협(오명애)|남부1|휴무|휴무|축협(오명애)|고한2|남부2|휴무|무실3|고한3|휴무|축협(오명애)|축협(오명애)|남부3|휴무|무실4|고한4|축협(오명애)|축협(오명애)|남부4|고한5|무실5|남부5|축협(오명애)|휴무|고한6','횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도1|문막천사마트1|원주센트럴|휴무|횡성점(김효정)|횡성점(김효정)|영월한반도2|휴무,천사2-이보람|휴무|휴무|횡성점(김효정)|횡성점(김효정)|휴무|영월한반도3|횡성점,천사3-이제리|횡성점(김효정)|원주이지더원|휴무|횡성점(김효정)|횡성점(김효정)|횡성점(김효정)|영월한반도4|영월한반도5|휴무|문막천사마트4|문막천사마트5','휴무|이안1|휴무|단구1|우산1|평창|평창|관설(김소연)|단구2|관설(김소연)|휴무,이안2-이종효|이안3|휴무,우산2-이제리|단구3|휴무|우산3|휴무|관설(김소연)|이안4|우산4|단구4|관설(김소연)|관설(김소연)|이안5|단구5|휴무,우산5-이제리|이안6|휴무|관설(김소연)|관설(김소연)','휴무|반곡1|원주1호1|기업3차(최현정)|기업3차(최현정)|청구1|휴무|휴무|원주1호2|원주1호3|청구2|반곡2|휴무|기업3차(최현정)|기업3차(최현정)|청구3|휴무|반곡3|기업3차(최현정)|기업3차(최현정)|원주1호4|청구4|반곡4|휴무|기업3차(최현정)|기업3차(최현정)|청구5|비번|휴무|반곡5','단관,단계-고은별|단관(미투입)|단관(미투입)|단관,단계-고은별|단관,단계-이보람|단관 인수인계,평창1-김순섭|단관 인수인계,평창2-김순섭|휴무|단계(황시현)|단계(황시현)|평창3|단관|우산|휴무|휴무|단관|단계(황시현)|단계(황시현)|문막천사|휴무|휴무|휴무|단계(황시현)|단관|평창4|우산|단계(황시현)|시범|휴무|단관','휴무|시범1|무실세영1|이지더원1|휴무|혁신중앙|태장1|태장2|이지더원2|시범2|무실세영2|문막천사|태장3|휴무|이지더원3|무실세영3|시범3|휴무|태장4|무실세영4|휴무,이지더원4-김아름|이지더원|시범4|태장5|무실세영5|무실세영6|비번|휴무,시범5-이제리|휴무|비번','단계|동화1|개운1|단계|단계|휴무,혁신중앙1-이보람|개운2|삼익|동화2|둔내1|혁신중앙2|휴무|휴무|개운3|휴무|동화3|혁신중앙3|휴무|개운4|둔내2|휴무|혁신중앙4|동화4|개운5|휴무|휴무|동화5|혁신중앙5|둔내3|둔내4'];
 var STORE0=[['영월','김병구','2026-03-17','일반위생1건'],['횡성','김효정','2026-07-07','일반위생1건'],['횡성축협','오명애','2026-07-07','적발X'],['삼익','최별','2026-04-23',''],['단관','정혜인','2026-04-23','중점위생1'],['시청','황순민','2026-07-07','적발X'],['단계','황시현','',''],['관설','김소연','2026-08-11','중점위생1'],['기업3차','최현정','2026-03-18','적발X']];
 function seedV2(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=i});
@@ -240,5 +285,29 @@ function seedV2(){var k=-1;S.sheets.forEach(function(s,i){if(s.ym==='2026-11')k=
  var sh=S.sheets[k];sh.people=['이종효','정다영','원봉희','김아름','김순섭','정상구','이제리','이보람','고은별'].map(function(x){return {name:x,job:'',h:8}});sh.cells={};
  SEEDN.forEach(function(a,i){a.split('|').forEach(function(v,d){if(v)sh.cells[i+'-'+(d+1)]=v})});
  S.stores=STORE0.map(function(a){return {n:a[0],s:a[1],d:a[2],m:a[3]}});S.master=STORE0.map(function(a){return a[0]});S.cur=k;S.seedv=4}
-function pick(r){KEY='shift-v3-'+r;S=init();if(r==='원주'&&S.seedv!==4)seedV2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0)}
-</script></body></html>
+function pick(r){dbStop();CURR=r;KEY='shift-v3-'+r;S=init();if(r==='원주'&&S.seedv!==4)seedV2();save();document.getElementById('home').hidden=true;document.getElementById('app').hidden=false;document.getElementById('rt').textContent=r+' 근무표';document.getElementById('q').value='';render();window.scrollTo(0,0);dbStart()}
+try{if(window.claude&&window.claude.use){window.claude.use('db').then(function(d){if(!d)return null;DB=d;return window.claude.use('user')}).then(function(u){if(!DB)return;USR=u;var ps=[];if(u&&u.can)ps.push(u.can('data.write').then(function(c){CANW=c}));if(u&&u.canEdit)ps.push(u.canEdit().then(function(c){CANE=c}));return Promise.all(ps)}).then(function(){dbReady()}).catch(function(){})}}catch(e){}
+</script><script>
+// Firebase 설정 파일 (index.html과 같은 폴더에 올려 주세요)
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDkJHYLi66ShgIsKpLCDA7jy9kZOn41Zts",
+  authDomain: "paris-89aea.firebaseapp.com",
+  databaseURL: "https://paris-89aea-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "paris-89aea",
+  storageBucket: "paris-89aea.firebasestorage.app",
+  messagingSenderId: "779014546139",
+  appId: "1:779014546139:web:e55b1eb636dc025ffb62fe",
+  measurementId: "G-61BJFY7FX0",
+  teamEmail: "teamparis@schedule.app"   // Authentication에서 만든 사용자 이메일 (다르면 여기를 고치세요)
+};
+</script>
+<script type="module">
+(async function(){var cfg=window.FIREBASE_CONFIG;if(!cfg||!cfg.databaseURL||window.claude)return;
+ try{var B='https://www.gstatic.com/firebasejs/10.12.2/';
+  var a=await import(B+'firebase-app.js'),au=await import(B+'firebase-auth.js'),d=await import(B+'firebase-database.js');
+  var app=a.initializeApp(cfg),auth=au.getAuth(app),rdb=d.getDatabase(app);
+  var ad=makeAdapter({rdb:rdb,ref:d.ref,set:d.set,update:d.update,remove:d.remove,onValue:d.onValue});
+  au.onAuthStateChanged(auth,function(u){if(u){var b=document.getElementById('login');if(b)b.hidden=true;extDB(ad)}else{needLogin(function(pw){return au.signInWithEmailAndPassword(auth,cfg.teamEmail,pw)})}})
+ }catch(e){extErr(e)}})();
+</script>
+</body></html>
